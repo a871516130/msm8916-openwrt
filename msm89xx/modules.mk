@@ -5,14 +5,12 @@ define KernelPackage/qcom-rproc
   TITLE:=Qualcomm remoteproc support
   DEPENDS:=@TARGET_msm89xx
   KCONFIG:=\
-    CONFIG_QCOM_MDT_LOADER \
     CONFIG_QCOM_RPROC_COMMON \
     CONFIG_QCOM_PIL_INFO
   FILES:=\
-    $(LINUX_DIR)/drivers/soc/qcom/mdt_loader.ko \
     $(LINUX_DIR)/drivers/remoteproc/qcom_common.ko \
     $(LINUX_DIR)/drivers/remoteproc/qcom_pil_info.ko
-  AUTOLOAD:=$(call AutoProbe,mdt_loader qcom_common qcom_pil_info)
+  AUTOLOAD:=$(call AutoProbe,qcom_common qcom_pil_info)
 endef
 
 define KernelPackage/qcom-rproc/description

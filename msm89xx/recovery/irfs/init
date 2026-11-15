@@ -84,14 +84,15 @@ mdev -s 2>/dev/null
 # initramfs has no kmodloader, so load them by hand in dependency order:
 #
 #   wcn36xx        -> mac80211 -> cfg80211 -> compat
-#   qcom_wcnss_pil -> qcom_common, qcom_pil_info, mdt_loader  (WCNSS firmware)
+#   qcom_wcnss_pil -> qcom_common, qcom_pil_info  (WCNSS firmware; mdt_loader
+#                       is built-in, selected by CONFIG_DRM_MSM)
 #
 # Best-effort by design: a kernel with these built in has no /lib/modules and
 # simply skips the step, and any failure only costs the WiFi AP - the USB
 # console, DHCP and SSH must never depend on it.  Started before the console
 # because the WCNSS firmware boot is the long pole (~5 s).
 if [ -d /lib/modules ]; then
-	for m in mdt_loader qcom_common qcom_pil_info qcom_wcnss_pil \
+	for m in qcom_common qcom_pil_info qcom_wcnss_pil \
 		 compat cfg80211 mac80211 wcn36xx; do
 		f=$(ls /lib/modules/*/"$m".ko 2>/dev/null | head -1)
 		[ -n "$f" ] || continue

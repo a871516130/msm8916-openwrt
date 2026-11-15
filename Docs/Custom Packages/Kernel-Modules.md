@@ -7,7 +7,7 @@ not-yet-upstream Qualcomm drivers the MSM8916 port needs. They are gated to
 
 | Package | Module(s) | Autoload | Purpose |
 | :--- | :--- | :--- | :--- |
-| `kmod-qcom-rproc` | `mdt_loader`, `qcom_common`, `qcom_pil_info` | ✅ | Qualcomm **remoteproc** support — loading firmware for the on-SoC remote processors. |
+| `kmod-qcom-rproc` | `qcom_common`, `qcom_pil_info` | ✅ | Qualcomm **remoteproc** support — loading firmware for the on-SoC remote processors (`mdt_loader` is built-in: `CONFIG_DRM_MSM` selects it). |
 | `kmod-qcom-rproc-wcnss` | `qcom_wcnss_pil`, `wcnss_ctrl` | ✅ | **WCNSS** (Wi-Fi/BT Pronto core) remoteproc firmware loading and control. |
 | `kmod-qcom-rproc-modem` | `qcom_q6v5`, `qcom_q6v5_mss` | ✅ | **Modem** (MPSS/Q6) remoteproc firmware loading and control. |
 | `kmod-rpm-master-stats` | `rpm_master_stats` | ❌ manual | Per-subsystem **RPM sleep/wake counters** read from the RPM message RAM, exposed under `/sys/kernel/debug/qcom_rpm_master_stats/{APSS,MPSS,PRONTO}`. Ships no `MODULE_DEVICE_TABLE` (a debugging module), so load it with `modprobe rpm_master_stats`. Requires the `msm8916.dtsi` master-stats node (patch 824). |

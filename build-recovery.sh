@@ -78,7 +78,7 @@ RECOVERY_CMDLINE="earlycon console=ttyMSM0,115200 panic=5"
 
 # Modules the initramfs has to carry, in insmod order.  Must match the list in
 # msm89xx/recovery/irfs/init.
-RECOVERY_MODULES="mdt_loader qcom_common qcom_pil_info qcom_wcnss_pil compat cfg80211 mac80211 wcn36xx"
+RECOVERY_MODULES="qcom_common qcom_pil_info qcom_wcnss_pil compat cfg80211 mac80211 wcn36xx"
 
 # Board list - derived from the device definitions, stays in sync automatically.
 list_boards() {

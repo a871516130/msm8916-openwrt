@@ -342,9 +342,9 @@ image **without touching `boot`/`rootfs`**.
 
 > **Only applies to boards whose image ships a `recovery` partition** —
 > `hmuf02v5`, `mf800b`, `mifib-v12`, `jz02` and `mf32lt` are built with `GPT_RECOVERY=1`. On
-> the other five boards the script aborts before writing anything. The `jz02` and
-> `mf32lt` builds carry the partitions but have no published `recovery-<board>.img`
-> yet, which the script also requires.
+> the other five boards the script aborts before writing anything. The `jz02`
+> build carries the partitions but has no published `recovery-<board>.img` yet,
+> which the script also requires; `mf32lt` ships one since 2026-11-15.
 
 It is menu `3` (`--mode repartition`): it rewrites the GPT, wipes the overlay
 (fast 2 MiB superblock wipe), and flashes `recovery-<board>.img`. Because

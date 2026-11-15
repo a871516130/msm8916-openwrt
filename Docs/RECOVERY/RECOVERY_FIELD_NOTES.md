@@ -116,16 +116,17 @@ mdev -s 2>/dev/null
 as modules, and the initramfs has no kmodloader. The old recovery kernel had
 them built in, which is why nobody noticed.
 
-**Fix.** build-recovery.sh copies eight .ko files out of
+**Fix.** build-recovery.sh copies seven .ko files out of
 root-msm89xx/lib/modules/<ver>/ (so they always match the packed kernel) and
 /init insmods them in dependency order:
 
 ~~~
 wcn36xx        -> mac80211 -> cfg80211 -> compat
-qcom_wcnss_pil -> qcom_common, qcom_pil_info, mdt_loader   (WCNSS firmware)
+qcom_wcnss_pil -> qcom_common, qcom_pil_info   (WCNSS firmware;
+                  mdt_loader is built-in, selected by CONFIG_DRM_MSM)
 ~~~
 
-**Prove it.** "cat /proc/modules" lists all eight; dmesg shows
+**Prove it.** "cat /proc/modules" lists all seven; dmesg shows
 "Booting fw image wcnss.mdt" and "wcn36xx: mac address: …".
 
 ### 3b. phy0 exists, wlan0 does not

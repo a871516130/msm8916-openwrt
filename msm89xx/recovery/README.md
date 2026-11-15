@@ -243,6 +243,7 @@ frozen and re-attached unchanged to every release by the release workflow
 | :---- | :--- | ---: | :----- | :---------- | :---------------- |
 | `mifib-v12` | `mifib-v12.img` | 11 862 016 | `9edfc760d169a114868f3bc46663f593a318d1eda45d2f8a7fd1e6a2ba52c91f` | its own `boot.img` (2026-11-01 build) | 2026-11-01 — p17 boot + `fastboot boot`; SSH, web UI, **WiFi AP `OpenWrt-Recovery` on wlan0** |
 | `hmuf02v5` | `hmuf02v5.img` | 11 986 944 | `538397cd4392ace6553adb0335628978d186e6d422161faedab534a69256677f` | the device's own p13 (25.12.6-r2 kernel) | 2026-11-01 — `fastboot boot` + p17 boot; SSH, web UI, `reboot-edl`, **WiFi AP `OpenWrt-Recovery` on wlan0 (hostapd, ch 6)** |
+| `mf32lt` | `mf32lt.img` | 12 355 584 | `c4e7f054422b6f0e21ed925f284003d8e86d488e8791b26f4da615c061e4b3ab` | its own `boot.img` (2026-11-15 build) | built 2026-11-15 — **not yet bench-verified**; blobs from the device's own rootfs backup |
 
 `mf800b` also sets `GPT_RECOVERY=1` but has **no image yet** (the board is not
 on the bench), so `flash.sh` stops at its recovery step there.
@@ -267,7 +268,7 @@ mixed pair**.  Two ways to satisfy it:
   ```sh
   D=root@<device>
   ssh $D 'dd if=/dev/mmcblk0p13 of=/tmp/boot.img bs=4096; mkdir -p /tmp/km'
-  ssh $D 'cp /rom/lib/modules/*/mdt_loader.ko /rom/lib/modules/*/qcom_common.ko \
+  ssh $D 'cp /rom/lib/modules/*/qcom_common.ko \
       /rom/lib/modules/*/qcom_pil_info.ko /rom/lib/modules/*/qcom_wcnss_pil.ko \
       /rom/lib/modules/*/compat.ko /rom/lib/modules/*/cfg80211.ko \
       /rom/lib/modules/*/mac80211.ko /rom/lib/modules/*/wcn36xx.ko /tmp/km/'
@@ -342,7 +343,7 @@ the same on `mf800b`, `mifib-v12` and `hmuf02v5`.
 | `irfs/usr/sbin/dnsmasq` | bit-identical to the OpenWrt dnsmasq package build (`build_dir/.../root-msm89xx/usr/sbin/dnsmasq`); needs `libubox`/`libubus` from `irfs/lib` |
 | `irfs/usr/sbin/hostapd`, `irfs/usr/sbin/iw` + their `.so` libs (`irfs/lib/libnl*`, `libwolfssl*`/`libmbed*`) | **NOT frozen / not committed** - pulled per board from a live device by `fetch-device-blobs.sh` (a SAE-capable build; the board already serves WPA3 with it). `iw` is needed to create the AP interface. See the note below. |
 | `irfs/etc/hostapd.conf` | WPA2 + WPA3 (SAE) AP `OpenWrt-Recovery`, passphrase `recovery` |
-| `irfs/lib/modules/<ver>/*.ko` | **NOT frozen / not committed** - copied out of `build_dir/.../root-msm89xx/lib/modules/<ver>/` on every build, so they always match the packed kernel: `mdt_loader`, `qcom_common`, `qcom_pil_info`, `qcom_wcnss_pil`, `compat`, `cfg80211`, `mac80211`, `wcn36xx` (the list is `RECOVERY_MODULES` in `build-recovery.sh` and must stay in sync with the `insmod` loop in `/init`) |
+| `irfs/lib/modules/<ver>/*.ko` | **NOT frozen / not committed** - copied out of `build_dir/.../root-msm89xx/lib/modules/<ver>/` on every build, so they always match the packed kernel: `qcom_common`, `qcom_pil_info`, `qcom_wcnss_pil`, `compat`, `cfg80211`, `mac80211`, `wcn36xx` (the list is `RECOVERY_MODULES` in `build-recovery.sh` and must stay in sync with the `insmod` loop in `/init`; `mdt_loader` is built-in - `CONFIG_DRM_MSM` selects `CONFIG_QCOM_MDT_LOADER` - so it has no `.ko`) |
 
 ### WiFi firmware and hostapd are fetched per board, not committed
 
