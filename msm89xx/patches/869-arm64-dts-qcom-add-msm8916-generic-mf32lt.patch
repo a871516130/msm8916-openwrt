@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/qcom/msm8916-generic-mf32lt.dts
-@@ -0,0 +1,282 @@
+@@ -0,0 +1,286 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * MF32LT 4G modem stick (XinXun UFI MF32LT): MSM8916, 512 MB RAM, 4 GB eMMC,
@@ -259,6 +259,10 @@
 +
 +&usb_hs_phy {
 +	extcon = <&pm8916_charger>;
++};
++
++&gpu {
++	status = "okay";
 +};
 +
 +/*

@@ -4,16 +4,23 @@
 #
 #   mifib-v12   green:bat / red:bat
 #   mf800b      green:charging / red:charging
+#   mf32/mf32lt four blue bat_1..bat_4 lamps as a 4-bar capacity gauge
 #
+# Pair boards (green/red):
 #   green blink 1000/1000   charging
 #   green solid             charge complete
 #   red fast blink 150/150  gauge present but unreadable (driver/thermistor fault)
 #   both off                discharging normally, no battery, or no gauge
 #
-# The pair carries CHARGE STATE ONLY.  Capacity is deliberately not encoded:
-# a percentage cannot be read off a blink pattern, and LuCI already reports it
-# with the runtime estimate (Status -> Overview and the Battery page).  The one
-# exception is the unreadable gauge, which is a fault rather than a level.
+# MF32 4-bar boards:
+#   1..4 lamps solid         capacity in 25 % steps
+#   top lamp blink           charging (filling toward the next bar)
+#   all four solid           charge complete
+#   bat_1 fast blink         gauge present but unreadable
+#   all off                  discharging, no battery, or no gauge
+#
+# The pair carries CHARGE STATE ONLY; the MF32 bars carry capacity.  LuCI
+# reports both with the runtime estimate (Status -> Overview, Battery page).
 #
 # mf800b binds red:charging to the kernel trigger "pm8916-bms-vm-charging", so
 # the first write here takes the lamp over (trigger=none) and the green half
@@ -28,16 +35,21 @@ case "${1:-}" in
                 cat <<'USAGE'
 Usage: battery-led-monitor [--help]
 
-Drive the battery green/red pair from /sys/class/power_supply.  Started by
-procd (/etc/init.d/battery-led-monitor); takes no arguments.
+Drive the battery lamps from /sys/class/power_supply.  Started by procd
+(/etc/init.d/battery-led-monitor); takes no arguments.
 
-States:
+Pair boards (green/red):
   green blink 1000/1000   charging
   green solid             charge complete
   red fast blink 150/150  battery device present but capacity unreadable
   both off                discharging, no battery device, or no gauge
 
-Capacity is not shown on the LEDs -- use LuCI (Status -> Overview, Battery).
+MF32 4-bar boards (four blue bat_1..bat_4 lamps):
+  1..4 solid    capacity in 25 % steps
+  top blink     charging toward the next bar
+  4 solid       charge complete
+  bat_1 blink   gauge present but unreadable
+  all off       discharging, no battery, or no gauge
 USAGE
                 exit 0
                 ;;
@@ -47,12 +59,26 @@ POLL=5
 
 . /usr/share/msm89xx/leds.sh
 
+# MF32/MF32LT exposes four blue bat_1..bat_4 lamps that act as a 4-bar
+# capacity gauge.  Detect them so other boards keep the green/red pair.
+MF32_BARS=""
+if [ -e "$LEDS_SYSFS/bat_1/trigger" ] && [ -e "$LEDS_SYSFS/bat_2/trigger" ] &&
+   [ -e "$LEDS_SYSFS/bat_3/trigger" ] && [ -e "$LEDS_SYSFS/bat_4/trigger" ]; then
+        MF32_BARS=1
+fi
+
 GREEN=$(led_role_lamp bat_green) || GREEN=""
 RED=$(led_role_lamp bat_red) || RED=""
 
 find_battery()
 {
         local p
+
+        if [ -d "/sys/class/power_supply/pm8916-bms-vm" ] &&
+           [ "$(cat /sys/class/power_supply/pm8916-bms-vm/type 2>/dev/null)" = "Battery" ]; then
+                echo "/sys/class/power_supply/pm8916-bms-vm"
+                return 0
+        fi
 
         for p in /sys/class/power_supply/*; do
                 [ -d "$p" ] || continue
@@ -86,7 +112,35 @@ apply()
         esac
 }
 
+# MF32 4-bar gauge.  $1 = bars lit (0-4), $2 = charging (0/1), $3 = fault (0/1).
+apply_bars()
+{
+        local i led bars="$1" charging="$2" fault="$3"
+
+        for i in 1 2 3 4; do
+                led="$LEDS_SYSFS/bat_$i"
+                [ -e "$led/trigger" ] || continue
+
+                if [ "$fault" = 1 ]; then
+                        if [ "$i" = 1 ]; then
+                                led_apply "$led" blink:150:150
+                        else
+                                led_apply "$led" off
+                        fi
+                elif [ "$i" -le "$bars" ]; then
+                        led_apply "$led" on
+                elif [ "$charging" = 1 ] && [ "$bars" -lt 4 ] && [ "$i" = "$((bars + 1))" ]; then
+                        led_apply "$led" blink:1000:1000
+                else
+                        led_apply "$led" off
+                fi
+        done
+}
+
 LAST=""
+LASTBARS=-1
+LASTF=-1
+LASTCH=-1
 
 while true; do
         # Track AC transitions for the runtime estimate on the LuCI battery page.
@@ -117,11 +171,46 @@ while true; do
                 fi
         fi
 
-        if [ "$STATE" != "$LAST" ]; then
-                apply "$STATE"
-                logger -t battery-led-monitor \
-                        "battery LED: $STATE${CAP:+ (capacity ${CAP}%, $STATUS)}"
-                LAST="$STATE"
+        if [ -n "$MF32_BARS" ]; then
+                # 4-bar capacity gauge.
+                BARS=0
+                if [ "$STATE" = error ]; then
+                        BARS=-1
+                elif [ "$STATE" = none ]; then
+                        BARS=0
+                elif [ "$STATE" = full ]; then
+                        BARS=4
+                else
+                        CAPN=$(echo "$CAP" | tr -dc '0-9')
+                        if [ "$CAPN" -ge 76 ]; then BARS=4
+                        elif [ "$CAPN" -ge 51 ]; then BARS=3
+                        elif [ "$CAPN" -ge 26 ]; then BARS=2
+                        elif [ "$CAPN" -ge 1 ]; then BARS=1
+                        else BARS=0; fi
+                fi
+
+                if [ "$STATE" = error ]; then
+                        F=1
+                else
+                        F=0
+                fi
+                CH=$( [ "$STATE" = charging ] && echo 1 || echo 0 )
+
+                if [ "$BARS" != "$LASTBARS" ] || [ "$F" != "$LASTF" ] || [ "$CH" != "$LASTCH" ]; then
+                        apply_bars "$BARS" "$CH" "$F"
+                        logger -t battery-led-monitor \
+                                "battery LED: ${BARS}/4 bars, $STATUS"
+                        LASTBARS="$BARS"
+                        LASTF="$F"
+                        LASTCH="$CH"
+                fi
+        else
+                if [ "$STATE" != "$LAST" ]; then
+                        apply "$STATE"
+                        logger -t battery-led-monitor \
+                                "battery LED: $STATE${CAP:+ (capacity ${CAP}%, $STATUS)}"
+                        LAST="$STATE"
+                fi
         fi
 
         sleep "$POLL"

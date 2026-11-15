@@ -2,17 +2,86 @@
 <h2 name="content"><%:Battery & Charge Limit%></h2>
 
 <style type="text/css">
-.bat-page .bat-cols {
+.bat-page .bat-hero {
+	margin: 0 0 14px;
+	padding: 16px 18px 14px;
+	border: 1px solid rgba(128,128,128,.25);
+	border-radius: 10px;
+	background: rgba(128,128,128,.06);
+}
+.bat-page .bat-hero-top {
 	display: flex;
 	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+}
+.bat-page .bat-hero-pct {
+	font-size: 2.4em;
+	font-weight: 700;
+	line-height: 1;
+}
+.bat-page .bat-hero-pct .sign {
+	font-size: .5em;
+	font-weight: 600;
+	opacity: .65;
+	margin-left: 3px;
+}
+.bat-page .bat-hero-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+.bat-page .bat-pill {
+	display: inline-block;
+	padding: 3px 11px;
+	border-radius: 999px;
+	font-size: .85em;
+	font-weight: 600;
+	background: rgba(128,128,128,.18);
+}
+.bat-page .bat-updated {
+	font-size: .8em;
+	opacity: .6;
+	margin-left: 4px;
+}
+.bat-page .bat-hero .bat-barwrap { padding: 14px 0 0; }
+.bat-page .bat-bar {
+	height: 10px;
+	border-radius: 5px;
+	background: rgba(128,128,128,.25);
+	overflow: hidden;
+}
+.bat-page .bat-bar > span {
+	display: block;
+	height: 100%;
+	border-radius: 5px;
+	background: #35b558;
+	transition: width .6s ease, background-color .3s ease;
+}
+.bat-page .bat-barwrap.bat-warn .bat-bar > span { background: #e0a800; }
+.bat-page .bat-barwrap.bat-crit .bat-bar > span { background: #e05252; }
+
+.bat-page .bat-cols {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+	gap: 14px;
+	align-items: stretch;
+	margin-bottom: 14px;
+}
+.bat-page .bat-col {
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+}
+.bat-page .bat-lower {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
 	gap: 14px;
 	align-items: stretch;
 }
-.bat-page .bat-col {
-	flex: 1 1 330px;
-	min-width: 285px;
-	margin: 0;
-}
+.bat-page .bat-lower fieldset { margin: 0; }
 .bat-page .bat-row {
 	display: flex;
 	justify-content: space-between;
@@ -38,26 +107,10 @@
 	opacity: .6;
 	margin-left: 6px;
 }
-.bat-page .bat-row.bat-hero .val { font-size: 1.3em; }
-.bat-page .val.bat-ok   { color: #35b558; }
-.bat-page .val.bat-warn { color: #e0a800; }
-.bat-page .val.bat-crit { color: #e05252; }
-.bat-page .val.bat-info { color: #3d8fd1; }
-.bat-page .bat-barwrap { padding: 0 13px 10px; }
-.bat-page .bat-bar {
-	height: 8px;
-	border-radius: 4px;
-	background: rgba(128,128,128,.25);
-	overflow: hidden;
-}
-.bat-page .bat-bar > span {
-	display: block;
-	height: 100%;
-	border-radius: 4px;
-	background: #35b558;
-}
-.bat-page .bat-barwrap.bat-warn .bat-bar > span { background: #e0a800; }
-.bat-page .bat-barwrap.bat-crit .bat-bar > span { background: #e05252; }
+.bat-page .bat-ok   { color: #35b558; }
+.bat-page .bat-warn { color: #e0a800; }
+.bat-page .bat-crit { color: #e05252; }
+.bat-page .bat-info { color: #3d8fd1; }
 .bat-page .bat-actions {
 	display: flex;
 	flex-wrap: wrap;
@@ -70,15 +123,73 @@
 	font-size: 1em;
 	font-weight: 600;
 }
+.bat-page .bat-actions button.bat-active {
+	outline: 2px solid #3d8fd1;
+	outline-offset: 2px;
+}
 .bat-page .bat-note {
 	font-size: .85em;
 	opacity: .75;
 	margin: 12px 0 0;
 }
 .bat-page .cbi-value { padding: 4px 0; }
+.bat-page .bat-flash {
+	margin: 0 0 14px;
+	padding: 10px 14px;
+	border: 1px solid rgba(53,181,88,.5);
+	border-radius: 8px;
+	background: rgba(53,181,88,.12);
+	color: #35b558;
+	font-weight: 600;
+}
+.bat-page .bat-flash.bat-flash-err {
+	border-color: rgba(224,82,82,.5);
+	background: rgba(224,82,82,.12);
+	color: #e05252;
+}
+.bat-toast {
+	position: fixed;
+	right: 18px;
+	bottom: 18px;
+	z-index: 9999;
+	padding: 11px 18px;
+	border-radius: 8px;
+	background: #333;
+	color: #fff;
+	font-size: .95em;
+	font-weight: 600;
+	box-shadow: 0 4px 14px rgba(0,0,0,.35);
+	opacity: 0;
+	transform: translateY(8px);
+	pointer-events: none;
+	transition: opacity .25s ease, transform .25s ease;
+}
+.bat-toast.bat-toast-show {
+	opacity: 1;
+	transform: none;
+}
 </style>
 
 <div class="cbi-map bat-page">
+
+<% if d.flash then %>
+<div class="bat-flash<% if d.flashclass then %> <%=d.flashclass%><% end %>"><%=d.flash%></div>
+<% end %>
+
+<div class="bat-hero">
+	<div class="bat-hero-top">
+		<div class="bat-hero-pct"><span id="bat-cappct"><%=d.cappct%></span><span class="sign">%</span></div>
+		<div class="bat-hero-meta">
+			<span class="bat-pill <%=d.stclass%>" id="bat-status-pill"><%=d.status%></span>
+			<span class="bat-pill <%=d.chgclass%>" id="bat-charger-pill"><%=d.chgtext%></span>
+			<span class="bat-pill <%=d.lstateclass%>" id="bat-limit-pill"><%:Limit state%>: <%=d.lstate%></span>
+			<span class="bat-updated"><%:Updated%> <span id="bat-upd"><%=d.updated%></span></span>
+		</div>
+	</div>
+	<div class="bat-barwrap <%=d.capclass%>" id="bat-barwrap">
+		<div class="bat-bar"><span id="bat-barfill" style="width:<%=d.cappct%>%"></span></div>
+	</div>
+</div>
 
 <div class="bat-cols">
 
@@ -86,93 +197,92 @@
 		<legend><%:Live status%></legend>
 
 		<div class="bat-row">
-			<span class="lbl"><%:Charge%></span>
-			<span class="val <%=d.capclass%>"><%=d.cappct%>%</span>
-		</div>
-		<div class="bat-barwrap <%=d.capclass%>">
-			<div class="bat-bar"><span style="width:<%=d.cappct%>%"></span></div>
-		</div>
-
-		<div class="bat-row">
 			<span class="lbl"><%:Battery status%></span>
-			<span class="val <%=d.stclass%>"><%=d.status%></span>
+			<span class="val <%=d.stclass%>" id="bat-status"><%=d.status%></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Health%></span>
-			<span class="val"><%=d.health%></span>
+			<span class="val" id="bat-health"><%=d.health%></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Battery voltage%></span>
-			<span class="val"><%=d.vnow%></span>
+			<span class="val" id="bat-voltage"><%=d.vnow%></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Battery temperature%></span>
-			<span class="val <%=d.tempclass%>"><%=d.temp%><% if d.tsensor == "vadc" then %><span class="hint"><%:VADC%></span><% end %></span>
+			<span class="val <%=d.tempclass%>" id="bat-temp-cell"><span id="bat-temp"><%=d.temp%></span><% if d.tsensor == "vadc" then %><span class="hint"><%:VADC%></span><% end %></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Charger%></span>
-			<span class="val <%=d.chgclass%>"><% if d.online == "1" then %><%:Online%><% else %><%:Offline%><% end %></span>
+			<span class="val <%=d.chgclass%>" id="bat-charger"><%=d.chgtext%></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Charge current%></span>
-			<span class="val"><%=d.curr%></span>
+			<span class="val" id="bat-curr"><%=d.curr%></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Charge enabled%></span>
-			<span class="val <%=d.ceclass%>"><% if d.ce == "1" then %><%:Yes%><% else %><%:No%><% end %></span>
+			<span class="val <%=d.ceclass%>" id="bat-ce"><%=d.cetext%></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Charge voltage max%></span>
-			<span class="val"><%=d.cvmax%></span>
+			<span class="val" id="bat-cvmax"><%=d.cvmax%></span>
+		</div>
+
+		<div class="bat-row">
+			<span class="lbl"><%:Design capacity%></span>
+			<span class="val" id="bat-design"><%=d.design%></span>
+		</div>
+
+		<div class="bat-row">
+			<span class="lbl"><%:Full capacity%></span>
+			<span class="val" id="bat-fullcap"><%=d.fullcap%></span>
 		</div>
 	</fieldset>
 
 	<fieldset class="cbi-section bat-col">
 		<legend><%:Runtime on battery%></legend>
 
-		<div class="bat-row bat-hero">
+		<div class="bat-row">
 			<span class="lbl"><%:On battery for%></span>
-			<span class="val bat-info"><% if d.onbat then %><%=d.uptime%><% else %><%:On AC power%><% end %></span>
+			<span class="val bat-info" id="bat-uptime"><% if d.onbat then %><%=d.uptime%><% else %><%:On AC power%><% end %></span>
 		</div>
 
-		<div class="bat-row bat-hero">
+		<div class="bat-row">
 			<span class="lbl"><%:Estimated remaining%></span>
-			<span class="val <%=d.capclass%>"><% if d.remain then %><%=d.remain%><% else %>&mdash;<% end %></span>
+			<span class="val <%=d.capclass%>" id="bat-remain"><% if d.remain then %><%=d.remain%><% else %>&mdash;<% end %></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Discharge rate%></span>
-			<span class="val"><% if d.rate then %><%=d.rate%><% else %>&mdash;<% end %></span>
+			<span class="val" id="bat-rate"><%=d.rate or "&mdash;"%></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Estimated full runtime%></span>
-			<span class="val"><% if d.full then %><%=d.full%><% else %>&mdash;<% end %></span>
+			<span class="val" id="bat-full"><%=d.full or "&mdash;"%></span>
+		</div>
+
+		<div class="bat-row">
+			<span class="lbl"><%:Estimated time to full%></span>
+			<span class="val" id="bat-chgfull"><%=d.chgfull or "&mdash;"%></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Session start%></span>
-			<span class="val">
-				<% if d.rate then %>
-					<%=d.startcap%>% &rarr; <%=d.cappct%>%
-				<% elseif d.onbat then %>
-					<span class="hint"><%:needs about five minutes of discharge%></span>
-				<% else %>
-					&mdash;
-				<% end %>
-			</span>
+			<span class="val" id="bat-startcell"><% if d.starttime then %><%=d.starttime%> &middot; <%=d.startcap%>% &rarr; <%=d.cappct%>%<% elseif d.onbat then %><span class="hint"><%:needs about five minutes of discharge%></span><% else %>&mdash;<% end %></span>
 		</div>
 
 		<div class="bat-row">
 			<span class="lbl"><%:Last session%></span>
-			<span class="val"><% if d.lastsess then %><%=d.lastsess%><% else %>&mdash;<% end %></span>
+			<span class="val" id="bat-lastsess"><%=d.lastsess or "&mdash;"%></span>
 		</div>
 
 		<p class="bat-note">
@@ -182,61 +292,367 @@
 
 </div>
 
-<fieldset class="cbi-section">
-	<legend><%:Charging control%></legend>
+<div class="bat-lower">
 
-	<form method="post" action="">
-		<input type="hidden" name="act" value="charge" />
-		<div class="bat-actions">
-			<button type="submit" class="cbi-button cbi-button-positive" name="val" value="1">
-				<%:Enable charging%>
-			</button>
-			<button type="submit" class="cbi-button cbi-button-negative" name="val" value="0">
-				<%:Disable charging%>
-			</button>
-		</div>
-	</form>
+	<fieldset class="cbi-section">
+		<legend><%:Charging control%></legend>
 
-	<p class="bat-note">
-		<%:Disabling charging only clears the charger enable bit; with the charger offline the PMIC ignores it. The charge limit below re-asserts the bit on its own schedule.%>
-	</p>
-</fieldset>
-
-<fieldset class="cbi-section">
-	<legend><%:Charge limit%></legend>
-
-	<form method="post" action="">
-		<input type="hidden" name="act" value="apply" />
-
-		<div class="cbi-value">
-			<label class="cbi-value-title" for="bat_enabled"><%:Enabled%></label>
-			<div class="cbi-value-field">
-				<select id="bat_enabled" name="enabled">
-					<option value="1"<% if d.enabled == "1" then %> selected="selected"<% end %>><%:Yes%></option>
-					<option value="0"<% if d.enabled == "0" then %> selected="selected"<% end %>><%:No%></option>
-				</select>
+		<form id="bat-charge-form" method="post" action="">
+			<input type="hidden" name="act" value="charge" />
+			<div class="bat-actions">
+				<button type="submit" class="cbi-button cbi-button-positive<% if d.ce == "1" then %> bat-active<% end %>" name="val" value="1" id="bat-btn-on">
+					<%:Enable charging%>
+				</button>
+				<button type="submit" class="cbi-button cbi-button-negative<% if d.ce == "0" then %> bat-active<% end %>" name="val" value="0" id="bat-btn-off">
+					<%:Disable charging%>
+				</button>
 			</div>
-		</div>
+		</form>
 
-		<div class="cbi-value">
-			<label class="cbi-value-title" for="bat_limit"><%:Stop charging at%></label>
-			<div class="cbi-value-field">
-				<input id="bat_limit" type="text" name="limit" value="<%=d.limit%>" size="4" /> %
+		<form id="bat-curr-form" method="post" action="">
+			<input type="hidden" name="act" value="curr" />
+
+			<div class="cbi-value">
+				<label class="cbi-value-title" for="bat_cctrl"><%:Charge current control%></label>
+				<div class="cbi-value-field">
+					<select id="bat_cctrl" name="cctrl">
+						<option value="0"<% if d.cctrl == "0" then %> selected="selected"<% end %>><%:Default%></option>
+						<option value="1"<% if d.cctrl == "1" then %> selected="selected"<% end %>><%:Custom%></option>
+					</select>
+				</div>
 			</div>
-		</div>
 
-		<div class="cbi-value">
-			<label class="cbi-value-title" for="bat_resume"><%:Resume at%></label>
-			<div class="cbi-value-field">
-				<input id="bat_resume" type="text" name="resume" value="<%=d.resume%>" size="4" /> %
+			<div class="cbi-value" id="bat-currow"<% if d.cctrl ~= "1" then %> style="display:none"<% end %>>
+				<label class="cbi-value-title" for="bat_curr_ma"><%:Charge current%></label>
+				<div class="cbi-value-field">
+					<input type="range" id="bat_curr_ma" name="curr_ma" min="90" max="1440" step="10" value="<%=d.currma or 1000%>" />
+					<span id="bat_curr_val" style="margin-left:8px"><%=d.currma or 1000%> mA</span>
+				</div>
 			</div>
-		</div>
 
-		<div class="cbi-page-actions">
-			<button type="submit" class="cbi-button cbi-button-apply"><%:Save & Apply%></button>
-		</div>
-	</form>
-</fieldset>
+			<div class="cbi-page-actions">
+				<button type="submit" class="cbi-button cbi-button-apply"><%:Apply%></button>
+			</div>
+		</form>
+
+		<p class="bat-note">
+			<%:Disabling charging only clears the charger enable bit; with the charger offline the PMIC ignores it. The charge limit below re-asserts the bit on its own schedule.%>
+		</p>
+	</fieldset>
+
+	<fieldset class="cbi-section">
+		<legend><%:Charge limit%></legend>
+
+		<form id="bat-limit-form" method="post" action="">
+			<input type="hidden" name="act" value="apply" />
+
+			<div class="bat-row">
+				<span class="lbl"><%:Limit state%></span>
+				<span class="val <%=d.lstateclass%>" id="bat-lstate"><%=d.lstate%></span>
+			</div>
+
+			<div class="cbi-value">
+				<label class="cbi-value-title" for="bat_enabled"><%:Enabled%></label>
+				<div class="cbi-value-field">
+					<select id="bat_enabled" name="enabled">
+						<option value="1"<% if d.enabled == "1" then %> selected="selected"<% end %>><%:Yes%></option>
+						<option value="0"<% if d.enabled == "0" then %> selected="selected"<% end %>><%:No%></option>
+					</select>
+				</div>
+			</div>
+
+			<div class="cbi-value">
+				<label class="cbi-value-title" for="bat_limit"><%:Stop charging at%></label>
+				<div class="cbi-value-field">
+					<input id="bat_limit" type="text" name="limit" value="<%=d.limit%>" size="4" /> %
+				</div>
+			</div>
+
+			<div class="cbi-value">
+				<label class="cbi-value-title" for="bat_resume"><%:Resume at%></label>
+				<div class="cbi-value-field">
+					<input id="bat_resume" type="text" name="resume" value="<%=d.resume%>" size="4" /> %
+				</div>
+			</div>
+
+			<div class="cbi-page-actions">
+				<button type="submit" class="cbi-button cbi-button-apply"><%:Save & Apply%></button>
+			</div>
+		</form>
+	</fieldset>
 
 </div>
+
+<span id="bat-lbl-limitstate" hidden><%:Limit state%></span>
+<span id="bat-src-onac" hidden><%:On AC power%></span>
+<span id="bat-src-startneed" hidden><%:needs about five minutes of discharge%></span>
+<span id="bat-src-invalid" hidden><%:Invalid values, enter numbers between 1 and 100, resume below limit%></span>
+<span id="bat-src-err" hidden><%:Request failed%></span>
+
+<div id="bat-toast" class="bat-toast" role="status"></div>
+
+</div>
+
+<script type="text/javascript">//<![CDATA[
+(function() {
+	var dataUrl = '<%=luci.dispatcher.build_url("admin", "status", "battery", "data")%>';
+	var dash = '—';
+
+	function el(id) {
+		return document.getElementById(id);
+	}
+
+	function src(id) {
+		var n = el(id);
+		return n ? n.textContent : '';
+	}
+
+	function setText(id, v) {
+		var n = el(id);
+		if (n)
+			n.textContent = (v == null || v === '') ? dash : v;
+	}
+
+	function setVal(id, v, cls) {
+		var n = el(id);
+		if (!n)
+			return;
+		n.textContent = (v == null || v === '') ? dash : v;
+		if (cls !== undefined)
+			n.className = 'val' + (cls ? ' ' + cls : '');
+	}
+
+	function apply(d) {
+		setText('bat-cappct', (d.cappct != null) ? String(d.cappct) : null);
+
+		var fill = el('bat-barfill');
+		if (fill)
+			fill.style.width = (d.cappct || 0) + '%';
+
+		var wrap = el('bat-barwrap');
+		if (wrap && d.capclass)
+			wrap.className = 'bat-barwrap ' + d.capclass;
+
+		var sp = el('bat-status-pill');
+		if (sp) {
+			if (d.status != null)
+				sp.textContent = d.status;
+			sp.className = 'bat-pill ' + (d.stclass || '');
+		}
+
+		var cp = el('bat-charger-pill');
+		if (cp) {
+			if (d.chgtext != null)
+				cp.textContent = d.chgtext;
+			cp.className = 'bat-pill ' + (d.chgclass || '');
+		}
+
+		var lp = el('bat-limit-pill');
+		if (lp && d.lstate != null) {
+			lp.textContent = src('bat-lbl-limitstate') + ': ' + d.lstate;
+			lp.className = 'bat-pill ' + (d.lstateclass || '');
+		}
+
+		setVal('bat-status', d.status, d.stclass);
+		setVal('bat-health', d.health, undefined);
+		setText('bat-voltage', d.vnow);
+		setVal('bat-temp', d.temp, undefined);
+
+		var tc = el('bat-temp-cell');
+		if (tc && d.tempclass)
+			tc.className = 'val ' + d.tempclass;
+
+		setVal('bat-charger', d.chgtext, d.chgclass);
+		setText('bat-curr', d.curr);
+		setVal('bat-ce', d.cetext, d.ceclass);
+		setText('bat-cvmax', d.cvmax);
+		setText('bat-design', d.design);
+		setText('bat-fullcap', d.fullcap);
+
+		setText('bat-uptime', d.onbat ? d.uptime : src('bat-src-onac'));
+		setVal('bat-remain', d.remain, d.remain ? d.capclass : undefined);
+		setText('bat-rate', d.rate);
+		setText('bat-full', d.full);
+		setText('bat-chgfull', d.chgfull);
+		setText('bat-lastsess', d.lastsess);
+
+		var sc = el('bat-startcell');
+		if (sc) {
+			if (d.starttime != null && d.startcap != null)
+				sc.textContent = d.starttime + ' · ' + d.startcap + '% → ' + d.cappct + '%';
+			else if (d.onbat)
+				sc.textContent = src('bat-src-startneed');
+			else
+				sc.textContent = dash;
+		}
+
+		var ls = el('bat-lstate');
+		if (ls && d.lstate != null) {
+			ls.textContent = d.lstate;
+			ls.className = 'val ' + (d.lstateclass || '');
+		}
+
+		var cc = el('bat-cctrl');
+		if (cc && d.cctrl != null && cc.value !== d.cctrl)
+			cc.value = d.cctrl;
+		var cm = el('bat_curr_ma');
+		if (cm && d.currma != null && cm.value !== String(d.currma))
+			cm.value = d.currma;
+		var cv = el('bat_curr_val');
+		if (cv && d.currma != null)
+			cv.textContent = d.currma + ' mA';
+		var cr = el('bat-currow');
+		if (cr && d.cctrl != null)
+			cr.style.display = (d.cctrl === '1') ? '' : 'none';
+
+		setText('bat-upd', d.updated);
+
+		var form = el('bat-limit-form');
+		if (!form || !form.contains(document.activeElement)) {
+			var en = el('bat_enabled');
+			if (en && d.enabled != null && en.value !== d.enabled)
+				en.value = d.enabled;
+			var li = el('bat_limit');
+			if (li && d.limit != null && document.activeElement !== li)
+				li.value = d.limit;
+			var rs = el('bat_resume');
+			if (rs && d.resume != null && document.activeElement !== rs)
+				rs.value = d.resume;
+		}
+
+		var bOn = el('bat-btn-on');
+		if (bOn && d.ce != null)
+			bOn.className = bOn.className.replace(/\s*bat-active\b/g, '') + (d.ce === '1' ? ' bat-active' : '');
+		var bOff = el('bat-btn-off');
+		if (bOff && d.ce != null)
+			bOff.className = bOff.className.replace(/\s*bat-active\b/g, '') + (d.ce === '0' ? ' bat-active' : '');
+
+		if (d.flash)
+			toast(d.flash, d.flashclass !== 'bat-crit');
+	}
+
+	var toastTimer = null;
+	function toast(msg, ok) {
+		var t = el('bat-toast');
+		if (!t || !msg)
+			return;
+		t.textContent = msg;
+		t.style.background = ok ? '#2f8f45' : '#c0392b';
+		t.className = 'bat-toast bat-toast-show';
+		if (toastTimer)
+			clearTimeout(toastTimer);
+		toastTimer = setTimeout(function() {
+			t.className = 'bat-toast';
+		}, 2800);
+	}
+
+	function post(data, done) {
+		var finished = false;
+		function finish(ok) {
+			if (finished)
+				return;
+			finished = true;
+			if (done)
+				done(ok);
+		}
+		XHR.post(dataUrl, data, function(x, res) {
+			if (res)
+				apply(res);
+			finish(!!res);
+		});
+		setTimeout(function() {
+			finish(false);
+		}, 8000);
+	}
+
+	function bindBtn(id, val) {
+		var b = el(id);
+		if (!b)
+			return;
+		b.addEventListener('click', function(ev) {
+			ev.preventDefault();
+			if (b.disabled)
+				return;
+			b.disabled = true;
+			post({ act: 'charge', val: val }, function(ok) {
+				b.disabled = false;
+				if (!ok)
+					toast(src('bat-src-err'), false);
+			});
+		});
+	}
+
+	bindBtn('bat-btn-on', '1');
+	bindBtn('bat-btn-off', '0');
+
+	var cctrl = el('bat-cctrl');
+	var currow = el('bat-currow');
+	var cslider = el('bat_curr_ma');
+	var cval = el('bat_curr_val');
+
+	if (cctrl && currow) {
+		cctrl.addEventListener('change', function() {
+			currow.style.display = (cctrl.value === '1') ? '' : 'none';
+		});
+	}
+
+	if (cslider && cval) {
+		cslider.addEventListener('input', function() {
+			cval.textContent = cslider.value + ' mA';
+		});
+	}
+
+	var cform = el('bat-curr-form');
+	if (cform) {
+		cform.addEventListener('submit', function(ev) {
+			ev.preventDefault();
+			var btn = cform.querySelector('button[type="submit"]');
+			if (btn)
+				btn.disabled = true;
+			post({
+				act: 'curr',
+				cctrl: el('bat-cctrl').value,
+				curr_ma: el('bat_curr_ma').value
+			}, function(ok) {
+				if (btn)
+					btn.disabled = false;
+				if (!ok)
+					toast(src('bat-src-err'), false);
+			});
+		});
+	}
+
+	var lform = el('bat-limit-form');
+	if (lform) {
+		lform.addEventListener('submit', function(ev) {
+			ev.preventDefault();
+			var lim = parseInt(el('bat_limit').value, 10);
+			var res = parseInt(el('bat_resume').value, 10);
+			if (!(lim >= 1 && lim <= 100 && res >= 1 && res <= 100 && res < lim)) {
+				toast(src('bat-src-invalid'), false);
+				return;
+			}
+			var btn = lform.querySelector('button[type="submit"]');
+			if (btn)
+				btn.disabled = true;
+			post({
+				act: 'apply',
+				enabled: el('bat_enabled').value,
+				limit: lim,
+				resume: res
+			}, function(ok) {
+				if (btn)
+					btn.disabled = false;
+				if (!ok)
+					toast(src('bat-src-err'), false);
+			});
+		});
+	}
+
+	XHR.poll(5, dataUrl, null, function(x, data) {
+		if (data)
+			apply(data);
+	});
+})();
+//]]></script>
 <%+footer%>

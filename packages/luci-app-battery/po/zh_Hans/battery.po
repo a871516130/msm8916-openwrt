@@ -1,0 +1,186 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Battery & Charge Limit"
+msgstr "电池与充电限制"
+
+msgid "Battery status"
+msgstr "电池状态"
+
+msgid "Battery temperature"
+msgstr "电池温度"
+
+msgid "Battery voltage"
+msgstr "电池电压"
+
+msgid "Charge"
+msgstr "充电"
+
+msgid "Charge current"
+msgstr "充电电流"
+
+msgid "Charge enabled"
+msgstr "充电已启用"
+
+msgid "Charge limit"
+msgstr "充电上限"
+
+msgid "Charger"
+msgstr "充电器"
+
+msgid "Charge voltage max"
+msgstr "充电电压上限"
+
+msgid "Charging control"
+msgstr "充电控制"
+
+msgid "Disable charging"
+msgstr "禁用充电"
+
+msgid "Disabling charging only clears the charger enable bit; with the charger offline the PMIC ignores it. The charge limit below re-asserts the bit on its own schedule."
+msgstr "禁用充电仅清除充电器使能位；充电器离线时 PMIC 会忽略该位。下方的充电上限会按自身调度重新置位该位。"
+
+msgid "Discharge rate"
+msgstr "放电速率"
+
+msgid "Enable charging"
+msgstr "启用充电"
+
+msgid "Enabled"
+msgstr "已启用"
+
+msgid "Estimated full runtime"
+msgstr "满电续航"
+
+msgid "Estimated time to full"
+msgstr "预计充满时间"
+
+msgid "Charge current control"
+msgstr "充电电流控制"
+
+msgid "Default"
+msgstr "默认"
+
+msgid "Custom"
+msgstr "自定义"
+
+msgid "Apply"
+msgstr "应用"
+
+msgid "Charge current set"
+msgstr "充电电流已设置"
+
+msgid "Charge current control off"
+msgstr "充电电流控制已关闭"
+
+msgid "Estimated remaining"
+msgstr "预计剩余时间"
+
+msgid "Health"
+msgstr "健康状况"
+
+msgid "Last session"
+msgstr "上次会话"
+
+msgid "Live status"
+msgstr "实时状态"
+
+msgid "needs about five minutes of discharge"
+msgstr "需要约五分钟的放电"
+
+msgid "No"
+msgstr "否"
+
+msgid "Offline"
+msgstr "离线"
+
+msgid "On AC power"
+msgstr "交流电供电"
+
+msgid "On battery for"
+msgstr "电池运行"
+
+msgid "Online"
+msgstr "在线"
+
+msgid "Resume at"
+msgstr "恢复于"
+
+msgid "Runtime on battery"
+msgstr "电池运行时间"
+
+msgid "Save & Apply"
+msgstr "保存并应用"
+
+msgid "Session start"
+msgstr "会话开始"
+
+msgid "Stop charging at"
+msgstr "停止充电于"
+
+msgid "The estimate is derived from the capacity drop since the charger was unplugged, because the PM8916 gauge exposes no current_now."
+msgstr "估算基于充电器拔除后的容量下降，因为 PM8916 电量计不提供 current_now。"
+
+msgid "VADC"
+msgstr "VADC"
+
+msgid "Yes"
+msgstr "是"
+
+msgid "Active"
+msgstr "生效中"
+
+msgid "Charging"
+msgstr "充电中"
+
+msgid "Discharging"
+msgstr "放电中"
+
+msgid "Not charging"
+msgstr "未充电"
+
+msgid "Full"
+msgstr "已充满"
+
+msgid "Good"
+msgstr "良好"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid "Design capacity"
+msgstr "设计容量"
+
+msgid "Full capacity"
+msgstr "满充容量"
+
+msgid "Limit state"
+msgstr "限值状态"
+
+msgid "Standby"
+msgstr "待命"
+
+msgid "Disabled"
+msgstr "已停用"
+
+msgid "Charging enabled"
+msgstr "已启用充电"
+
+msgid "Charging disabled"
+msgstr "已停用充电"
+
+msgid "Settings saved"
+msgstr "设置已保存"
+
+msgid "Updated"
+msgstr "更新于"
+
+msgid "Request failed"
+msgstr "请求失败"
+
+msgid "Invalid values, enter numbers between 1 and 100, resume below limit"
+msgstr "数值无效：请输入 1 到 100 之间的整数，且恢复值需小于停止值"

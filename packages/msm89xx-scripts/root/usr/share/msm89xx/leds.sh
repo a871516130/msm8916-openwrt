@@ -65,39 +65,73 @@ led_role_default()
 {
 	case "$1" in
 		wifi)
-			case "$(cat "$BOARD_NAME_FILE" 2>/dev/null)" in
-				*hmuf02v5*) led_pick blue:wlan blue:wan ;;
-				*)          led_pick green:wlan green:wan ;;
-			esac
+			if led_mf32_lamp; then
+				led_pick blue:wlan
+			else
+				case "$(cat "$BOARD_NAME_FILE" 2>/dev/null)" in
+					*hmuf02v5*) led_pick blue:wlan blue:wan ;;
+					*)          led_pick green:wlan green:wan ;;
+				esac
+			fi
 			;;
 		wifi_fault)
 			led_pick red:wlan
 			;;
 		wan)
-			case "$(cat "$BOARD_NAME_FILE" 2>/dev/null)" in
-				*hmuf02v5*) led_pick green:wan green:wlan ;;
-				*)          led_pick green:wan ;;
-			esac
+			if led_mf32_lamp; then
+				led_pick green:wlan
+			else
+				case "$(cat "$BOARD_NAME_FILE" 2>/dev/null)" in
+					*hmuf02v5*) led_pick green:wan green:wlan ;;
+					*)          led_pick green:wan ;;
+				esac
+			fi
 			;;
 		wan_fault)
-			led_pick red:wan 4g_type red:power
+			if led_mf32_lamp; then
+				led_pick red:power
+			else
+				led_pick red:wan 4g_type red:power
+			fi
 			;;
 		data)
-			case "$(cat "$BOARD_NAME_FILE" 2>/dev/null)" in
-				*hmuf02v5*) return 1 ;;
-				*)          led_pick blue:wan blue:wlan ;;
-			esac
+			if led_mf32_lamp; then
+				led_pick blue:wan
+			else
+				case "$(cat "$BOARD_NAME_FILE" 2>/dev/null)" in
+					*hmuf02v5*) return 1 ;;
+					*)          led_pick blue:wan blue:wlan ;;
+				esac
+			fi
 			;;
 		bat_green)
-			led_pick green:bat green:charging
+			if led_mf32_lamp; then
+				led_pick bat_1
+			else
+				led_pick green:bat green:charging
+			fi
 			;;
 		bat_red)
-			led_pick red:bat red:charging
+			if led_mf32_lamp; then
+				led_pick bat_2
+			else
+				led_pick red:bat red:charging
+			fi
 			;;
 		*)
 			return 1
 			;;
 	esac
+}
+
+# True on the OpenStick MF32 / MF32LT.  It exposes its battery/signal pair as
+# four blue bat_1..bat_4 lamps instead of the green:bat/red:bat pair the other
+# boards carry, so the battery roles must resolve to them.  Detected by the
+# bat_1 lamp so untouched boards keep their green/red defaults.
+led_mf32_lamp()
+{
+	[ -e "$LEDS_SYSFS/bat_1/trigger" ] || return 1
+	[ -e "$LEDS_SYSFS/bat_2/trigger" ] || return 1
 }
 
 # First existing lamp from a list of labels.

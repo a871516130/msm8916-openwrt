@@ -214,7 +214,7 @@ define Device/generic-mf32lt
 		block-mount f2fs-tools tar \
 		msm-firmware-dumper reboot-edl qcom-carrier-autocfg \
 		diag-efs diag-logtool msm89xx-firmware-upgrade luci-app-update-notify luci-app-led-setup \
-		luci-app-battery
+		luci-app-battery luci-i18n-battery-zh-cn qcom-msm8916-gpu-firmware
 endef
 TARGET_DEVICES += generic-mf32lt
 

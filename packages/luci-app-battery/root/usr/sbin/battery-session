@@ -10,11 +10,14 @@
 # does not wear the overlay flash.
 #
 # Fields:
-#   online      1 = AC present, 0 = running on battery
-#   start       epoch when AC was lost (only while online=0)
-#   start_cap   capacity (%) at that moment
-#   last        duration (s) of the previous battery session
-#   last_cap    capacity (%) when that session ended
+#   online          1 = AC present, 0 = running on battery
+#   start           epoch when AC was lost (only while online=0)
+#   start_cap       capacity (%) at that moment
+#   last            duration (s) of the previous battery session
+#   last_cap        capacity (%) when that session ended
+#   last_start      epoch when the previous battery session began
+#   chg_start       epoch when charging began (only while online=1)
+#   chg_start_cap   capacity (%) when charging began
 #
 # The gauge exposes no current_now/power_now, so the runtime estimate has to
 # come from the capacity drop over the session (see the LuCI controller).
@@ -36,6 +39,9 @@ write_state() {
 		[ -n "$3" ] && echo "start_cap=$3"
 		[ -n "$4" ] && echo "last=$4"
 		[ -n "$5" ] && echo "last_cap=$5"
+		[ -n "$6" ] && echo "last_start=$6"
+		[ -n "$7" ] && echo "chg_start=$7"
+		[ -n "$8" ] && echo "chg_start_cap=$8"
 	} > "$STATE"
 }
 
@@ -51,7 +57,7 @@ find_by_type() {
 }
 
 tick() {
-	local chg bat online cap start start_cap last now
+	local chg bat online cap start start_cap last last_start chg_start chg_start_cap now
 
 	chg=$(find_by_type Mains) || chg=$(find_by_type USB) || return 0
 	bat=$(find_by_type Battery) || return 0
@@ -63,18 +69,22 @@ tick() {
 	start=$(get start)
 	start_cap=$(get start_cap)
 	last=$(get last)
+	last_start=$(get last_start)
+	chg_start=$(get chg_start)
+	chg_start_cap=$(get chg_start_cap)
 
 	if [ "$online" = "1" ]; then
 		if [ -n "$start" ]; then
 			now=$(date +%s)
 			last=$((now - start))
-			write_state 1 "" "" "$last" "$cap"
-		elif [ "$(get online)" != "1" ]; then
-			write_state 1 "" "" "$last" ""
+			write_state 1 "" "" "$last" "$cap" "$start" "$now" "$cap"
+		elif [ -z "$chg_start" ]; then
+			now=$(date +%s)
+			write_state 1 "" "" "$last" "" "$last_start" "$now" "$cap"
 		fi
 	else
 		if [ -z "$start" ]; then
-			write_state 0 "$(date +%s)" "$cap" "$last" ""
+			write_state 0 "$(date +%s)" "$cap" "$last" "" "$last_start" "" ""
 		fi
 	fi
 }
