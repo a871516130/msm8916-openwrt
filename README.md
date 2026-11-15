@@ -1,5 +1,7 @@
 # OpenWrt for Qualcomm Snapdragon 410 (MSM8916) 4G LTE USB Sticks & Modems
 
+**English** · [简体中文](README.zh-CN.md)
+
 [![OpenWrt Version](https://img.shields.io/badge/OpenWrt-25.12.6-blue.svg)](https://openwrt.org/)
 [![Kernel](https://img.shields.io/badge/Linux_Kernel-6.12-green.svg)](https://kernel.org/)
 [![Architecture](https://img.shields.io/badge/Arch-aarch64-orange.svg)](https://en.wikipedia.org/wiki/AArch64)
