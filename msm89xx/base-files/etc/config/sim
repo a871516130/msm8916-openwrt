@@ -1,0 +1,8 @@
+# SIM selection, read by etc/init.d/sim-select and usr/sbin/sim-select.
+#
+# BOARDS: mf32lt reads sim.sim.select (sim | esim1 | esim2, default sim).
+# jz02 keeps using the separate sim.slot key, which falls back to 3 when
+# this file carries no such option.
+
+config sim 'sim'
+	option select 'sim'

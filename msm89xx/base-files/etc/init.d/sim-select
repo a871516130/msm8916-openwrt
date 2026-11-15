@@ -1,24 +1,39 @@
 #!/bin/sh /etc/rc.common
-# JZ02 SIM-slot selector.
+# SIM-slot selector.
 #
-# The board has three SIM lines plus a re-announce pulse, exposed as gpio-leds
-# with the stock Android names:
+# JZ02 — three SIM lines plus a re-announce pulse, exposed as gpio-leds with
+# the stock Android names:
 #   sim1_switch_gpio  GPIO22  embedded / solder SIM
 #   sim2_switch_gpio  GPIO23  second SIM
 #   sim3_switch_gpio  GPIO1   external slot
 #   sim_hotdet_gpio   GPIO20  re-announce pulse
-#
 # Configure with:  uci set sim.slot=3 && uci commit sim
 # (1 = embedded, 2 = second, 3 = external; default 3)
 #
-# BOARDS: jz02 (the three SIM switch lines exist only there)
+# MF32LT — one physical tray plus two embedded SIMs:
+#   sim_switch_gpio   GPIO49  physical SIM tray (high = tray selected)
+#   esim1_switch_gpio GPIO50  first embedded SIM
+#   esim2_switch_gpio GPIO51  second embedded SIM
+#   GPIO24 (sim_en) stays low via the DTS gpio-hog and is never written here.
+# Configure with:  uci set sim.sim.select=sim && uci commit sim
+# (sim | esim1 | esim2; default sim, also /usr/sbin/sim-select)
+#
+# BOARDS: jz02 mf32lt (the SIM switch lines exist only there)
 
 START=20
 
 # Every board installs S20sim-select; exit before touching uci elsewhere.
-grep -q "jz02,generic" /proc/device-tree/compatible 2>/dev/null || exit 0
+grep -qE "jz02,generic|mf32lt,generic" /proc/device-tree/compatible 2>/dev/null || exit 0
 
 start() {
+	if grep -q "mf32lt,generic" /proc/device-tree/compatible 2>/dev/null; then
+		start_mf32lt
+	else
+		start_jz02
+	fi
+}
+
+start_jz02() {
 	local slot L
 	slot="$(uci -q get sim.slot 2>/dev/null)"
 	[ -n "$slot" ] || slot=3
@@ -49,6 +64,35 @@ start() {
 	echo 0 > "$L/sim_hotdet_gpio/brightness"
 
 	logger -t sim-select "selected SIM slot $slot"
+}
+
+start_mf32lt() {
+	local sel L=/sys/class/leds
+	sel="$(uci -q get sim.sim.select 2>/dev/null)"
+	[ -n "$sel" ] || sel=sim
+	case "$sel" in
+		sim|esim1|esim2) ;;
+		*) logger -t sim-select "invalid sim.sim.select '$sel' (expected sim, esim1 or esim2); using sim"
+		   sel=sim ;;
+	esac
+
+	if [ ! -d "$L/sim_switch_gpio" ]; then
+		logger -t sim-select "SIM mux GPIOs not present; skipping"
+		return 0
+	fi
+
+	# Drop every select line, then raise exactly the chosen one.  sim_en
+	# (GPIO24) is held low by the DTS hog and never appears here.
+	echo 0 > "$L/sim_switch_gpio/brightness"
+	echo 0 > "$L/esim1_switch_gpio/brightness"
+	echo 0 > "$L/esim2_switch_gpio/brightness"
+	case "$sel" in
+		sim)   echo 1 > "$L/sim_switch_gpio/brightness" ;;
+		esim1) echo 1 > "$L/esim1_switch_gpio/brightness" ;;
+		esim2) echo 1 > "$L/esim2_switch_gpio/brightness" ;;
+	esac
+
+	logger -t sim-select "selected $sel"
 }
 
 stop() {

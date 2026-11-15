@@ -198,4 +198,24 @@ define Device/generic-jz02
 endef
 TARGET_DEVICES += generic-jz02
 
+define Device/generic-mf32lt
+	$(Device/msm8916)
+	DEVICE_VENDOR := Generic
+	DEVICE_MODEL := MF32LT 4G Modem Stick
+	DEVICE_DTS := msm8916-generic-mf32lt
+	SUPPORTED_DEVICES := mf32lt,generic
+	FILESYSTEMS := squashfs
+	# Battery stick with the 3-way SIM/eSIM mux; same 4 GB eMMC as the
+	# other boards.
+	GPT_TOT_SECTORS := 7634944
+	# misc + recovery, like the other battery boards (no rescue image yet).
+	GPT_RECOVERY := 1
+	DEVICE_PACKAGES := msm89xx-scripts wpad-basic-wolfssl rmtfs uci-usb-gadget \
+		block-mount f2fs-tools tar \
+		msm-firmware-dumper reboot-edl qcom-carrier-autocfg \
+		diag-efs diag-logtool msm89xx-firmware-upgrade luci-app-update-notify luci-app-led-setup \
+		luci-app-battery
+endef
+TARGET_DEVICES += generic-mf32lt
+
 endif

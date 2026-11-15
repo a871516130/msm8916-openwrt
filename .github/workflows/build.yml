@@ -26,6 +26,7 @@ on:
           - ufi003
           - uz801
           - jz02
+          - mf32lt
 
 env:
   UPLOAD_FIRMWARE: true

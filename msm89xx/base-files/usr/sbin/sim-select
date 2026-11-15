@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# sim-select - switch the MF32LT SIM/eSIM mux.
+#
+# Usage:  sim-select [sim|esim1|esim2]
+#
+# With no argument the current selection is printed.  A valid argument is
+# saved to /etc/config/sim, re-applied by /etc/init.d/sim-select and the
+# modem subsystem is restarted so the baseband re-samples the mux lines.
+#
+# BOARDS: mf32lt (only that board has the tray/eSIM select lines)
+
+grep -q "mf32lt,generic" /proc/device-tree/compatible 2>/dev/null || exit 0
+
+cur="$(uci -q get sim.sim.select 2>/dev/null)"
+[ -n "$cur" ] || cur="sim"
+
+if [ $# -eq 0 ]; then
+	echo "$cur"
+	exit 0
+fi
+
+case "$1" in
+	sim|esim1|esim2) ;;
+	*) echo "Usage: sim-select [sim|esim1|esim2]" >&2; exit 1 ;;
+esac
+
+if [ "$1" = "$cur" ]; then
+	echo "SIM already $1"
+	exit 0
+fi
+
+uci set sim.sim.select="$1"
+uci commit sim
+/etc/init.d/sim-select restart
+
+if [ -w /sys/kernel/debug/msm_subsys/modem ]; then
+	echo restart > /sys/kernel/debug/msm_subsys/modem
+fi
+
+echo "SIM switched to $1"

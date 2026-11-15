@@ -21,11 +21,11 @@ This project maintains changes in **five** categories. The first three are sourc
 
 ## 1. Patches Overview
 
-### 1.1 Device Tree — board enablement (801–807, 852, 853, 867)
+### 1.1 Device Tree — board enablement (801–807, 852, 853, 867–869)
 
 | Patch | Targets | Description |
 | :---- | :------ | :---------- |
-| [`801-arm64-dts-qcom-add-devices-makefile.patch`](../../msm89xx/patches/801-arm64-dts-qcom-add-devices-makefile.patch) | `arch/arm64/boot/dts/qcom/Makefile` | Registers all project DTBs (`hmuf02v5`, `uf02`, `ufi001b`, `ufi003_mb_v02`, `mf800b`, `mifib-v12`, `uf896`) in the kernel build. |
+| [`801-arm64-dts-qcom-add-devices-makefile.patch`](../../msm89xx/patches/801-arm64-dts-qcom-add-devices-makefile.patch) | `arch/arm64/boot/dts/qcom/Makefile` | Registers all project DTBs (`hmuf02v5`, `uf02`, `ufi001b`, `ufi003_mb_v02`, `mf800b`, `mifib-v12`, `uf896`, `jz02`, `mf32lt`) in the kernel build. |
 | [`802-arm64-dts-qcom-msm8916-label-reserved-memory.patch`](../../msm89xx/patches/802-arm64-dts-qcom-msm8916-label-reserved-memory.patch) | `msm8916.dtsi` | Adds the `reserved_memory:` label so board DTS files can append `ramoops` regions. |
 | [`803-arm64-dts-qcom-uz801-leds-and-button.patch`](../../msm89xx/patches/803-arm64-dts-qcom-uz801-leds-and-button.patch) | `msm8916-yiming-uz801v3.dts` | Gives the UZ801V3 LEDs standard `LED_FUNCTION_WLAN` / `LED_FUNCTION_WAN` roles; preserves the reset button's active-low/pull-up mapping (GPIO23 idles high). |
 | [`804-arm64-dts-qcom-add-msm8916-generic-uf02.patch`](../../msm89xx/patches/804-arm64-dts-qcom-add-msm8916-generic-uf02.patch) | `msm8916-generic-uf02.dts` | Full board DTS for the UF02 stick (buttons, LEDs). |
@@ -35,6 +35,8 @@ This project maintains changes in **five** categories. The first three are sourc
 | [`852-arm64-dts-qcom-add-msm8916-generic-ufi003.patch`](../../msm89xx/patches/852-arm64-dts-qcom-add-msm8916-generic-ufi003.patch) | `msm8916-generic-ufi003_mb_v02.dts` | Full board DTS for the UFI003_MB_V02 stick (SIM/eSIM GPIO hogs, tri-colour LEDs, reset button, ramoops). |
 | [`853-arm64-dts-qcom-add-msm8916-generic-mifib-v12.patch`](../../msm89xx/patches/853-arm64-dts-qcom-add-msm8916-generic-mifib-v12.patch) | `msm8916-generic-mifib-v12.dts` | Full board DTS for the HM-MIFIB-V12 dongle: 4.2 V battery + PM8916 LBC charger + VM-BMS with pack thermistor, 4-bar battery LEDs, dual-colour WLAN/WAN LEDs, thermal mitigation and the A2 pin. |
 | [`867-arm64-dts-qcom-add-msm8916-generic-uf896.patch`](../../msm89xx/patches/867-arm64-dts-qcom-add-msm8916-generic-uf896.patch) | `msm8916-generic-uf896.dts` | Full board DTS for the UF896 (v1.1) 4G router: ramoops, reset button GPIO 35, tri-colour status LEDs plus six extra indicator LEDs (charger / network / Wi-Fi / data-link). SIM slot 1 is the default and needs no userspace help; selection is **not** an AP GPIO. Also sets `qcom,a2-pin` on `&bam_dmux`: r4 shipped without it on the assumption the board does not hit the A2 quiesce wedge, but field logs show `a2_power.c:1216` aborting the remoteproc at ~930 s of uptime and then crash-looping every 70–130 s. |
+| [`868-arm64-dts-qcom-add-msm8916-generic-jz02.patch`](../../msm89xx/patches/868-arm64-dts-qcom-add-msm8916-generic-jz02.patch) | `msm8916-generic-jz02.dts` | Full board DTS for the JZ02 battery MiFi: three SIM switch lines plus a hot-detect pulse as gpio-leds (driven by `etc/init.d/sim-select`), tri-colour network / Wi-Fi / battery lamps, a 4.35 V battery and the disabled reset button (the pinhole is not software-visible — hardware test). |
+| [`869-arm64-dts-qcom-add-msm8916-generic-mf32lt.patch`](../../msm89xx/patches/869-arm64-dts-qcom-add-msm8916-generic-mf32lt.patch) | `msm8916-generic-mf32lt.dts` | Full board DTS for the MF32LT stick: 3-way SIM/eSIM mux as gpio-leds (GPIO 49/50/51, driven by `etc/init.d/sim-select` and `/usr/sbin/sim-select`) with a `sim_en` gpio-hog, 4-bar battery gauge + PM8916 charger/BMS with pack NTC, GPIO power button (`KEY_POWER`), USB-id, SD slot and ramoops. |
 
 ### 1.2 BAM-DMUX network driver (808–812, 814, 820, 821, 825, 828, 831–833, 848, 850)
 
@@ -788,7 +790,7 @@ When developing or updating patches:
 2. **Numbering scheme**: three-digit, applied in lexical order. Numbers are
    stable identifiers, not a contiguous sequence — gaps (817, 829, 830, 835–837,
    839, 840) are removed/retired patches and must not be reused casually.
-   - `801–807`, `852–853`, `867`: device-tree board enablement
+   - `801–807`, `852–853`, `867–869`: device-tree board enablement
    - `808–851`: kernel drivers (BAM-DMUX, remoteproc, rpmsg, power, CPR, thermal)
    - `854–859`: power supply & battery (PM8916 LBC charger, VM-BMS, VADC)
    - `999`: trailing bug fixes that must sort last
