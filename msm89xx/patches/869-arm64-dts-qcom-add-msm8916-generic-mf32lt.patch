@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/qcom/msm8916-generic-mf32lt.dts
-@@ -0,0 +1,286 @@
+@@ -0,0 +1,300 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * MF32LT 4G modem stick (XinXun UFI MF32LT): MSM8916, 512 MB RAM, 4 GB eMMC,
@@ -286,4 +286,18 @@
 +		input-enable;
 +		bias-pull-up;
 +	};
++};
++
++/*
++ * The WCNSS WLAN subsystem on the MF32LT is a WCN3620 (2.4 GHz 802.11n)
++ * radio (confirmed from the board silkscreen), not the WCN3680-class 2x2
++ * 802.11ac radio this DTSI override was originally written for.
++ * Override the iris compatible to qcom,wcn3620 so:
++ *   - qcom_wcnss_iris configures the iris XO for 19.2 MHz (use_48mhz_xo =
++ *     false), otherwise the 48 MHz config of wcn3680 leaves the RF clock
++ *     wrong and the WCNSS firmware never asserts "ready" (start timed out),
++ *   - wcn36xx sets rf_id = RF_IRIS_WCN3620 (2.4 GHz only, no 5 GHz/VHT).
++ */
++&wcnss_iris {
++	compatible = "qcom,wcn3620";
 +};

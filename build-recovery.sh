@@ -209,6 +209,10 @@ install_modules() {
     msg "Installing kernel modules ($ver) into the initramfs"
     rm -rf "$RECOVERY_DIR/irfs/lib/modules"
     mkdir -p "$RECOVERY_DIR/irfs/lib/modules/$ver"
+    # Pin the directory modes: mkdir -p honours the ambient umask (the OpenWrt
+    # make integration runs recipes with a different umask than a hand run), so
+    # without this the archive differs between a `make` and a manual build.
+    chmod 755 "$RECOVERY_DIR/irfs/lib/modules" "$RECOVERY_DIR/irfs/lib/modules/$ver"
     for m in $RECOVERY_MODULES; do
         [ -f "$src/$m.ko" ] || die "module $m.ko is missing from $src"
         cp "$src/$m.ko" "$RECOVERY_DIR/irfs/lib/modules/$ver/$m.ko"
@@ -224,19 +228,40 @@ pack_image() {
     local b="$1" prod="$2" out="$RECOVERY_DIR/$b.img"
     msg "Packing $b: production kernel + recovery initramfs"
     python3 - "$prod" "$IRFS" "$out" "$RECOVERY_CMDLINE" <<'PY'
-import gzip, struct, subprocess, sys
+import gzip, os, struct, subprocess, sys
 
 prod, irfs, out, cmdline = sys.argv[1:5]
 
+# Reproducibility epoch: SOURCE_DATE_EPOCH is set by the OpenWrt make
+# integration (also by build.sh); fall back to 0 when run by hand.
+_sde = os.environ.get("SOURCE_DATE_EPOCH", "0")
+try:
+    _mtime = int(_sde)
+except ValueError:
+    _mtime = 0
+
 # --- initramfs: newc cpio, root-owned, reproducible ---------------------------
+# cpio --reproducible only makes the archive device-independent; it does NOT
+# pin mtimes (install_modules copies .ko files with a fresh mtime and mkdir
+# stamps the directories at build time), and python's gzip defaults to the
+# wall clock.  Pin every mtime here so two builds are byte-identical.
+subprocess.run(["find", ".", "-exec", "touch", "-h", "-d", "@" + str(_mtime),
+                "{}", "+"],
+               cwd=irfs, check=True)
 names = subprocess.run(["find", ".", "-print0"], cwd=irfs,
                        capture_output=True, check=True).stdout
+# install_blobs() rm -rf's and re-copies the blobs on every build, which
+# reshuffles the directory entries (and their inode order); `find` walks in
+# that order, so the cpio stream would differ between builds even with mtime
+# pinned.  Sort the paths so the archive order is deterministic (a directory
+# sorts before its own children, so extraction order stays valid).
+names = b"\0".join(sorted(names.rstrip(b"\0").split(b"\0"))) + b"\0"
 p = subprocess.run(["cpio", "--null", "-o", "-H", "newc", "--owner", "root:root",
                     "--reproducible", "--quiet"],
                    cwd=irfs, input=names, capture_output=True)
 if p.returncode != 0:
     sys.exit("cpio failed: " + p.stderr.decode(errors="replace"))
-ram = gzip.compress(p.stdout, 9)
+ram = gzip.compress(p.stdout, 9, mtime=_mtime)
 
 # --- kernel: lift it out of the production boot image -------------------------
 d = open(prod, "rb").read()

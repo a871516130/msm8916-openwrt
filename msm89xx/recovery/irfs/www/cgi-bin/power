@@ -1,21 +1,27 @@
 #!/bin/busybox sh
-# POST /cgi-bin/power?action=reboot|edl
+# POST /cgi-bin/power?action=reboot|edl  (?lang=zh -> Chinese reply)
 # The reply is flushed before the reset so the browser sees it.
 . /www/cgi-bin/lib.sh
 hdr text/plain
 
-[ "$REQUEST_METHOD" = POST ] || { echo "ERROR: POST required"; exit 0; }
+LANG=$(qs_get lang)
+[ "$LANG" = zh ] || LANG=en
+
+[ "$REQUEST_METHOD" = POST ] || {
+	[ "$LANG" = zh ] && echo "错误：需要 POST 请求" || echo "ERROR: POST required"
+	exit 0
+}
 
 case "$(qs_get action)" in
 reboot)
-	echo "rebooting..."
+	if [ "$LANG" = zh ]; then echo "正在重启..."; else echo "rebooting..."; fi
 	( sleep 2; /bin/reboot ) >/dev/null 2>&1 &
 	;;
 edl)
-	echo "rebooting into EDL (05c6:9008)..."
+	if [ "$LANG" = zh ]; then echo "正在重启进入 EDL（05c6:9008）..."; else echo "rebooting into EDL (05c6:9008)..."; fi
 	( sleep 2; /sbin/reboot-edl ) >/dev/null 2>&1 &
 	;;
 *)
-	echo "ERROR: unknown action"
+	if [ "$LANG" = zh ]; then echo "错误：未知操作"; else echo "ERROR: unknown action"; fi
 	;;
 esac

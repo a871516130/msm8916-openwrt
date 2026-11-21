@@ -1,5 +1,6 @@
 #!/bin/sh
-# led-boot: early boot LED feedback for the battery boards (mifib-v12, mf800b).
+# led-boot: early boot LED feedback for the battery boards (mifib-v12, mf800b,
+# mf32/mf32lt).
 #
 # Runs as a procd service (START=01) AFTER the overlay is mounted, so it works
 # even when deployed with scp -- unlike the preinit diag.sh path, which runs
@@ -11,18 +12,18 @@
 # Failsafe indication is not done here: diag.sh and 35_failsafe_usb own it, and
 # a second pattern on the same lamps would only conflict.
 
-GREEN_BAT=""
-for n in green:bat green:charging; do
-    [ -e "/sys/class/leds/$n/trigger" ] && { GREEN_BAT="/sys/class/leds/$n"; break; }
-done
+# The battery lamp is a role (bat_green), not a colour: mifib-v12/mf800b carry
+# green:bat, the mf32/mf32lt carry four blue bat_1..bat_4.  Resolve through the
+# shared resolver so the correct lamp blinks on every battery board.
+. /usr/share/msm89xx/leds.sh
+
+GREEN_BAT="$(led_role_lamp bat_green 2>/dev/null)"
 
 # The LED node may not exist yet right after the overlay mount; wait for it.
 i=0
 while [ -z "$GREEN_BAT" ] && [ "$i" -lt 30 ]; do
     sleep 1
-    for n in green:bat green:charging; do
-        [ -e "/sys/class/leds/$n/trigger" ] && { GREEN_BAT="/sys/class/leds/$n"; break; }
-    done
+    GREEN_BAT="$(led_role_lamp bat_green 2>/dev/null)"
     i=$((i + 1))
 done
 

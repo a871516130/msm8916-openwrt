@@ -34,67 +34,158 @@
   code { background: #262b35; padding: 1px 5px; border-radius: 4px; }
   .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; background: #262b35;
           font-size: 12px; color: #9fb3c8; }
+  .top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .lang { font-size: 12px; padding: 4px 10px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>OpenWrt Recovery</h1>
+  <div class="top">
+    <h1>OpenWrt Recovery</h1>
+    <button class="lang" id="b-lang" title="Switch language">中文</button>
+  </div>
   <div class="muted" id="status">loading...</div>
 
   <div class="card warn">
-    This console has <b>no authentication</b> and can erase the flash. Anyone who can
-    reach <code>192.168.10.1</code> can use it — keep it on a trusted network only.
+    <span data-i18n="warn">This console has <b>no authentication</b> and can erase the flash. Anyone who can reach <code>192.168.10.1</code> can use it &mdash; keep it on a trusted network only.</span>
   </div>
 
   <div class="card">
-    <h2>Sysupgrade (fresh install)</h2>
-    <div class="muted">Upload a <code>*-sysupgrade.bin</code>. Writes <code>kernel</code> to
-      <code>boot</code>, <code>root</code> to <code>rootfs</code> and erases the overlay
-      (same as <code>sysupgrade -n</code>: no settings are kept).</div>
+    <h2 data-i18n="sysup">Sysupgrade (fresh install)</h2>
+    <div class="muted" data-i18n="sysupDesc">Upload a <code>*-sysupgrade.bin</code>. Writes <code>kernel</code> to <code>boot</code>, <code>root</code> to <code>rootfs</code> and erases the overlay (same as <code>sysupgrade -n</code>: no settings are kept).</div>
     <div class="row" style="margin-top:12px">
       <input type="file" id="f-sys">
-      <button class="primary" id="b-sys">Flash sysupgrade</button>
+      <button class="primary" id="b-sys" data-i18n="btnSys">Flash sysupgrade</button>
     </div>
     <div class="bar"><i id="p-sys"></i></div>
     <pre id="o-sys" hidden></pre>
   </div>
 
   <div class="card">
-    <h2>Flash one partition</h2>
-    <div class="muted">Upload a raw image and write it to the selected partition
-      (e.g. <code>*-squashfs-boot.img</code> &rarr; <code>boot</code>,
-      <code>*-squashfs-system.img</code> &rarr; <code>rootfs</code>).</div>
+    <h2 data-i18n="part">Flash one partition</h2>
+    <div class="muted" data-i18n="partDesc">Upload a raw image and write it to the selected partition (e.g. <code>*-squashfs-boot.img</code> &rarr; <code>boot</code>, <code>*-squashfs-system.img</code> &rarr; <code>rootfs</code>).</div>
     <div class="row" style="margin-top:12px">
       <select id="tgt"></select>
       <input type="file" id="f-part">
-      <button class="danger" id="b-part">Flash partition</button>
+      <button class="danger" id="b-part" data-i18n="btnPart">Flash partition</button>
     </div>
     <div class="bar"><i id="p-part"></i></div>
     <pre id="o-part" hidden></pre>
   </div>
 
   <div class="card">
-    <h2>Power</h2>
+    <h2 data-i18n="power">Power</h2>
     <div class="row">
-      <button id="b-reboot">Reboot</button>
-      <button class="danger" id="b-edl">Reboot to EDL</button>
+      <button id="b-reboot" data-i18n="btnReboot">Reboot</button>
+      <button class="danger" id="b-edl" data-i18n="btnEdl">Reboot to EDL</button>
     </div>
-    <div class="muted" style="margin-top:8px">EDL = Qualcomm 9008 mode, for a full
-      reflash with <code>flash.sh</code> / QFIL.</div>
+    <div class="muted" style="margin-top:8px" data-i18n="edlDesc">EDL = Qualcomm 9008 mode, for a full reflash with <code>flash.sh</code> / QFIL.</div>
   </div>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
 
+// --- i18n -----------------------------------------------------------------
+// The page ships English and Chinese.  The language follows the browser
+// (LuCI-style 'auto'): a zh-* browser gets Chinese, anything else English.
+// The toggle forces one.  CGI output (flash/power progress) is requested in
+// the same language through the 'lang' query parameter.
+const I18N = {
+  en: {
+    title: "OpenWrt Recovery",
+    loading: "loading...",
+    warn: 'This console has <b>no authentication</b> and can erase the flash. Anyone who can reach <code>192.168.10.1</code> can use it &mdash; keep it on a trusted network only.',
+    sysup: "Sysupgrade (fresh install)",
+    sysupDesc: 'Upload a <code>*-sysupgrade.bin</code>. Writes <code>kernel</code> to <code>boot</code>, <code>root</code> to <code>rootfs</code> and erases the overlay (same as <code>sysupgrade -n</code>: no settings are kept).',
+    btnSys: "Flash sysupgrade",
+    part: "Flash one partition",
+    partDesc: 'Upload a raw image and write it to the selected partition (e.g. <code>*-squashfs-boot.img</code> &rarr; <code>boot</code>, <code>*-squashfs-system.img</code> &rarr; <code>rootfs</code>).',
+    btnPart: "Flash partition",
+    power: "Power",
+    btnReboot: "Reboot",
+    btnEdl: "Reboot to EDL",
+    edlDesc: 'EDL = Qualcomm 9008 mode, for a full reflash with <code>flash.sh</code> / QFIL.',
+    status: (j) => j.kernel + " · up " + Math.floor(j.uptime / 60) + " min · RAM " +
+        j.mem_available + "/" + j.mem_total + " MB free · /tmp " + j.tmp_available + " MB",
+    statusErr: (e) => "status unavailable: " + e,
+    chooseSys: "Choose a sysupgrade image first.",
+    confirmSys: (n) => "Flash " + n + "?\n\nThis overwrites boot + rootfs and erases all settings.",
+    chooseImg: "Choose an image first.",
+    confirmPart: (n, t) => "Write " + n + " to partition '" + t + "'?\n\nThis overwrites it completely.",
+    confirmReboot: "Reboot now?",
+    confirmEdl: "Reboot into EDL (9008)?\nThe board will stop booting until you reflash it.",
+    uploading: "upload complete, writing to flash...\n",
+    errReq: "ERROR: request failed\n",
+    toggle: "中文"
+  },
+  zh: {
+    title: "OpenWrt 恢复系统",
+    loading: "加载中...",
+    warn: '此控制台<b>无身份验证</b>，可擦除闪存。任何能访问 <code>192.168.10.1</code> 的人都可使用 &mdash; 请仅将其保留在可信网络中。',
+    sysup: "Sysupgrade（全新安装）",
+    sysupDesc: '上传 <code>*-sysupgrade.bin</code>。将 <code>kernel</code> 写入 <code>boot</code>，<code>root</code> 写入 <code>rootfs</code>，并擦除 overlay（等同于 <code>sysupgrade -n</code>：不保留任何设置）。',
+    btnSys: "刷入 sysupgrade",
+    part: "刷入单个分区",
+    partDesc: '上传原始镜像并写入所选分区（例如 <code>*-squashfs-boot.img</code> &rarr; <code>boot</code>，<code>*-squashfs-system.img</code> &rarr; <code>rootfs</code>）。',
+    btnPart: "刷入分区",
+    power: "电源",
+    btnReboot: "重启",
+    btnEdl: "重启到 EDL",
+    edlDesc: 'EDL = Qualcomm 9008 模式，用于配合 <code>flash.sh</code> / QFIL 进行完整重刷。',
+    status: (j) => j.kernel + " · 已运行 " + Math.floor(j.uptime / 60) + " 分钟 · 内存 " +
+        j.mem_available + "/" + j.mem_total + " MB 可用 · /tmp " + j.tmp_available + " MB",
+    statusErr: (e) => "状态不可用：" + e,
+    chooseSys: "请先选择 sysupgrade 镜像。",
+    confirmSys: (n) => "刷入 " + n + "？\n\n这将覆盖 boot + rootfs 并擦除所有设置。",
+    chooseImg: "请先选择镜像。",
+    confirmPart: (n, t) => "将 " + n + " 写入分区 '" + t + "'？\n\n这将完全覆盖它。",
+    confirmReboot: "现在重启？",
+    confirmEdl: "重启进入 EDL（9008）？\n板子将停止启动，直到你重新刷入。",
+    uploading: "上传完成，正在写入闪存...\n",
+    errReq: "错误：请求失败\n",
+    toggle: "English"
+  }
+};
+
+// Resolve the active language once.  ?lang=zh|en forces it; otherwise the
+// browser language decides (zh -> zh, anything else -> en).
+function langFromURL() {
+  const v = new URLSearchParams(location.search).get("lang");
+  if (v === "zh" || v === "en") return v;
+  return (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
+}
+
+let LANG = langFromURL();
+let T = I18N[LANG];
+
+// Static text lives in the markup as the English default; swap it in place so
+// the page still renders for a no-JS browser (and for the first paint).
+function applyI18n() {
+  T = I18N[LANG];
+  document.title = T.title;
+  document.documentElement.lang = LANG;
+  $("b-lang").textContent = T.toggle;
+  $("status").textContent = T.loading;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.innerHTML = T[el.dataset.i18n]; });
+}
+
+$("b-lang").onclick = () => {
+  const next = LANG === "zh" ? "en" : "zh";
+  const u = new URL(location);
+  u.searchParams.set("lang", next);
+  location.href = u.toString();
+};
+
+applyI18n();
+
+// --- status ---------------------------------------------------------------
 function fmt(b) { return (b / 1048576).toFixed(1) + " MB"; }
 
 async function refresh() {
   try {
     const j = await (await fetch("/cgi-bin/info", {cache: "no-store"})).json();
-    $("status").textContent =
-      j.kernel + " · up " + Math.floor(j.uptime / 60) + " min · RAM " +
-      j.mem_available + "/" + j.mem_total + " MB free · /tmp " + j.tmp_available + " MB";
+    $("status").textContent = T.status(j);
     const sel = $("tgt");
     const keep = sel.value;
     sel.innerHTML = "";
@@ -106,7 +197,7 @@ async function refresh() {
     }
     if (keep) sel.value = keep;
   } catch (e) {
-    $("status").textContent = "status unavailable: " + e;
+    $("status").textContent = T.statusErr(e);
   }
 }
 
@@ -123,40 +214,40 @@ function send(url, file, barId, outId, btnId, done) {
   btn.disabled = true;
   bar.style.width = "0";
   const xhr = new XMLHttpRequest();
-  xhr.open("POST", url);
+  xhr.open("POST", url + (url.includes("?") ? "&" : "?") + "lang=" + LANG);
   xhr.upload.onprogress = e => {
     if (e.lengthComputable) bar.style.width = (e.loaded / e.total * 100).toFixed(1) + "%";
   };
-  xhr.upload.onload = () => { bar.style.width = "100%"; log(outId, "upload complete, writing to flash...\n"); };
+  xhr.upload.onload = () => { bar.style.width = "100%"; log(outId, T.uploading); };
   xhr.onload = () => { log(outId, xhr.responseText); btn.disabled = false; done && done(); };
-  xhr.onerror = () => { log(outId, "ERROR: request failed\n"); btn.disabled = false; };
+  xhr.onerror = () => { log(outId, T.errReq); btn.disabled = false; };
   xhr.send(file);
 }
 
 $("b-sys").onclick = () => {
   const f = $("f-sys").files[0];
-  if (!f) return alert("Choose a sysupgrade image first.");
-  if (!confirm("Flash " + f.name + "?\n\nThis overwrites boot + rootfs and erases all settings.")) return;
+  if (!f) return alert(T.chooseSys);
+  if (!confirm(T.confirmSys(f.name))) return;
   send("/cgi-bin/flash?mode=sysupgrade", f, "p-sys", "o-sys", "b-sys", refresh);
 };
 
 $("b-part").onclick = () => {
   const f = $("f-part").files[0];
-  if (!f) return alert("Choose an image first.");
+  if (!f) return alert(T.chooseImg);
   const t = $("tgt").value;
-  if (!confirm("Write " + f.name + " to partition '" + t + "'?\n\nThis overwrites it completely.")) return;
+  if (!confirm(T.confirmPart(f.name, t))) return;
   send("/cgi-bin/flash?mode=partition&target=" + encodeURIComponent(t),
        f, "p-part", "o-part", "b-part", refresh);
 };
 
 function power(action, msg) {
   if (!confirm(msg)) return;
-  fetch("/cgi-bin/power?action=" + action, {method: "POST"})
+  fetch("/cgi-bin/power?action=" + action + "&lang=" + LANG, {method: "POST"})
     .then(r => r.text()).then(t => alert(t));
 }
 
-$("b-reboot").onclick = () => power("reboot", "Reboot now?");
-$("b-edl").onclick = () => power("edl", "Reboot into EDL (9008)?\nThe board will stop booting until you reflash it.");
+$("b-reboot").onclick = () => power("reboot", T.confirmReboot);
+$("b-edl").onclick = () => power("edl", T.confirmEdl);
 
 refresh();
 setInterval(refresh, 15000);

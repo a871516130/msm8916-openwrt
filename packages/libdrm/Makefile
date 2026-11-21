@@ -192,6 +192,11 @@ define Package/libdrm-etnaviv/install
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libdrm_etnaviv.so.* $(1)/usr/lib/
 endef
 
+define Package/libdrm-freedreno/install
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libdrm_freedreno.so.* $(1)/usr/lib/
+endef
+
 define Package/libdrm-intel/install
 	$(INSTALL_DIR) $(1)/usr/lib
 	$(CP) $(PKG_INSTALL_DIR)/usr/lib/libdrm_intel.so.* $(1)/usr/lib/

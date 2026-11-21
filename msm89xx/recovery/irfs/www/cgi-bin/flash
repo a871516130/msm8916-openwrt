@@ -1,6 +1,7 @@
 #!/bin/busybox sh
 # POST /cgi-bin/flash?mode=sysupgrade          body = OpenWrt sysupgrade tar
 # POST /cgi-bin/flash?mode=partition&target=X  body = raw image for partition X
+# ?lang=zh makes the progress messages Chinese (default: English).
 #
 # The body is buffered in /tmp (tmpfs) first: a truncated or short upload must
 # never touch the flash.  Nothing is written until the archive/image has been
@@ -10,8 +11,83 @@ hdr text/plain
 
 UPLOAD=/tmp/upload.img
 
-fail() {
-	echo "ERROR: $*"
+# Language: en (default) or zh.  The web UI appends &lang= to the request.
+LANG=$(qs_get lang)
+[ "$LANG" = zh ] || LANG=en
+
+# msg KEY [printf-args...] -> localized one-liner (printed to stdout).
+msg() {
+	_k=$1; shift
+	if [ "$LANG" = zh ]; then
+		case "$_k" in
+			post_req)      printf '错误：需要 POST 请求\n' "$@" ;;
+			empty_body)    printf '错误：请求体为空\n' "$@" ;;
+			no_ram)        printf '错误：可用内存不足：需要 %s KiB，仅有 %s KiB\n' "$@" ;;
+			upload_fail)   printf '错误：上传失败\n' "$@" ;;
+			short_upload)  printf '错误：上传不完整：收到 %s 字节，应 %s 字节\n' "$@" ;;
+			received)      printf '收到 %s 字节\n' "$@" ;;
+			not_tar)       printf '错误：不是 tar 归档\n' "$@" ;;
+			no_board_dir)  printf '错误：归档中没有 sysupgrade-<board>/ 目录\n' "$@" ;;
+			missing_member) printf '错误：归档缺少 %s\n' "$@" ;;
+			no_boot_part)  printf '错误：本板没有 boot 分区\n' "$@" ;;
+			no_rootfs_part) printf '错误：本板没有 rootfs 分区\n' "$@" ;;
+			extract_fail)  printf '错误：解压归档失败\n' "$@" ;;
+			kernel_fit)    printf '错误：kernel（%s 字节）超出 boot（%s 字节）\n' "$@" ;;
+			rootfs_fit)    printf '错误：rootfs（%s 字节）超出 rootfs（%s 字节）\n' "$@" ;;
+			board)         printf '主板：%s\n' "$@" ;;
+			kernel_dest)   printf 'kernel：%s 字节 -> boot（%s）\n' "$@" ;;
+			kernel_done)   printf 'kernel 已写入\n' "$@" ;;
+			rootfs_dest)   printf 'rootfs：%s 字节 -> rootfs（%s）\n' "$@" ;;
+			rootfs_done)   printf 'rootfs 已写入\n' "$@" ;;
+			erasing_ovl)   printf '正在擦除 overlay（%s）\n' "$@" ;;
+			no_target)     printf '错误：未指定目标分区\n' "$@" ;;
+			bad_partname)  printf "错误：分区名 '%s' 非法\n" "$@" ;;
+			no_part)       printf "错误：本板没有名为 '%s' 的分区\n" "$@" ;;
+			part_fit)      printf "错误：镜像（%s 字节）超出 %s（%s 字节）\n" "$@" ;;
+			writing_part)  printf '正在写入 %s 字节到 %s（%s）\n' "$@" ;;
+			part_done)     printf '%s 已写入\n' "$@" ;;
+			unknown_mode)  printf "错误：未知模式 '%s'\n" "$@" ;;
+			done)          printf '完成\n' "$@" ;;
+			*)             printf '%s\n' "$*" ;;
+		esac
+	else
+		case "$_k" in
+			post_req)      printf 'ERROR: POST required\n' "$@" ;;
+			empty_body)    printf 'ERROR: empty request body\n' "$@" ;;
+			no_ram)        printf 'ERROR: not enough free RAM: need %s KiB, have %s KiB\n' "$@" ;;
+			upload_fail)   printf 'ERROR: upload failed\n' "$@" ;;
+			short_upload)  printf 'ERROR: short upload: got %s of %s bytes\n' "$@" ;;
+			received)      printf 'received %s bytes\n' "$@" ;;
+			not_tar)       printf 'ERROR: not a tar archive\n' "$@" ;;
+			no_board_dir)  printf 'ERROR: no sysupgrade-<board>/ directory in the archive\n' "$@" ;;
+			missing_member) printf 'ERROR: archive is missing %s\n' "$@" ;;
+			no_boot_part)  printf "ERROR: no 'boot' partition on this board\n" "$@" ;;
+			no_rootfs_part) printf "ERROR: no 'rootfs' partition on this board\n" "$@" ;;
+			extract_fail)  printf 'ERROR: extracting the archive failed\n' "$@" ;;
+			kernel_fit)    printf 'ERROR: kernel (%s B) does not fit boot (%s B)\n' "$@" ;;
+			rootfs_fit)    printf 'ERROR: rootfs (%s B) does not fit rootfs (%s B)\n' "$@" ;;
+			board)         printf 'board: %s\n' "$@" ;;
+			kernel_dest)   printf 'kernel: %s bytes -> boot (%s)\n' "$@" ;;
+			kernel_done)   printf 'kernel written\n' "$@" ;;
+			rootfs_dest)   printf 'rootfs: %s bytes -> rootfs (%s)\n' "$@" ;;
+			rootfs_done)   printf 'rootfs written\n' "$@" ;;
+			erasing_ovl)   printf 'erasing overlay (%s)\n' "$@" ;;
+			no_target)     printf 'ERROR: no target partition\n' "$@" ;;
+			bad_partname)  printf "ERROR: invalid partition name '%s'\n" "$@" ;;
+			no_part)       printf "ERROR: no partition named '%s' on this board\n" "$@" ;;
+			part_fit)      printf 'ERROR: image (%s B) does not fit %s (%s B)\n' "$@" ;;
+			writing_part)  printf 'writing %s bytes to %s (%s)\n' "$@" ;;
+			part_done)     printf '%s written\n' "$@" ;;
+			unknown_mode)  printf "ERROR: unknown mode '%s'\n" "$@" ;;
+			done)          printf 'DONE\n' "$@" ;;
+			*)             printf '%s\n' "$*" ;;
+		esac
+	fi
+}
+
+fail() {  # fail KEY [args...]
+	_k=$1; shift
+	msg "$_k" "$@"
 	rm -rf "$UPLOAD" /tmp/up
 	exit 0
 }
@@ -21,25 +97,25 @@ write_dev() {  # write_dev SRC DEV LABEL
 	dd if="$1" of="$2" bs=4096 conv=fsync 2>/tmp/dd.err
 	rc=$?
 	sed -n '$p' /tmp/dd.err
-	[ "$rc" -eq 0 ] || fail "writing $3 failed (dd exit $rc)"
+	[ "$rc" -eq 0 ] || fail write_fail "$3" "$rc"
 }
 
-[ "$REQUEST_METHOD" = POST ] || fail "POST required"
+[ "$REQUEST_METHOD" = POST ] || fail post_req
 
 mode=$(qs_get mode)
 target=$(qs_get target)
 len=${CONTENT_LENGTH:-0}
-[ "$len" -gt 0 ] 2>/dev/null || fail "empty request body"
+[ "$len" -gt 0 ] 2>/dev/null || fail empty_body
 
 avail=$(df -k /tmp | awk 'NR==2 {print $4}')
 need=$(( len / 1024 + 2048 ))
-[ "${avail:-0}" -gt "$need" ] || fail "not enough free RAM: need ${need} KiB, have ${avail:-0} KiB"
+[ "${avail:-0}" -gt "$need" ] || fail no_ram "$need" "${avail:-0}"
 
 rm -rf "$UPLOAD" /tmp/up
-cat > "$UPLOAD" || fail "upload failed"
+cat > "$UPLOAD" || fail upload_fail
 got=$(wc -c < "$UPLOAD" | tr -d ' ')
-[ "$got" = "$len" ] || fail "short upload: got $got of $len bytes"
-echo "received $len bytes"
+[ "$got" = "$len" ] || fail short_upload "$got" "$len"
+msg received "$len"
 
 case "$mode" in
 
@@ -47,63 +123,63 @@ sysupgrade)
 	# Same layout the running system's /lib/upgrade/platform.sh expects:
 	# sysupgrade-<board>/{CONTROL,kernel,root}
 	members=$(tar tf "$UPLOAD" 2>/dev/null)
-	[ -n "$members" ] || fail "not a tar archive"
+	[ -n "$members" ] || fail not_tar
 	board=$(printf '%s\n' "$members" | grep -m1 -E '^(\./)?sysupgrade-[^/]+' | sed -e 's|^\./||' -e 's|/.*||')
-	[ -n "$board" ] || fail "no sysupgrade-<board>/ directory in the archive"
+	[ -n "$board" ] || fail no_board_dir
 	for m in kernel root; do
-		printf '%s\n' "$members" | grep -qx "$board/$m" || fail "archive is missing $board/$m"
+		printf '%s\n' "$members" | grep -qx "$board/$m" || fail missing_member "$board/$m"
 	done
 
-	boot=$(find_part boot) || fail "no 'boot' partition on this board"
-	rootfs=$(find_part rootfs) || fail "no 'rootfs' partition on this board"
+	boot=$(find_part boot) || fail no_boot_part
+	rootfs=$(find_part rootfs) || fail no_rootfs_part
 
 	mkdir -p /tmp/up
-	tar -xf "$UPLOAD" -C /tmp/up "$board/kernel" "$board/root" || fail "extracting the archive failed"
+	tar -xf "$UPLOAD" -C /tmp/up "$board/kernel" "$board/root" || fail extract_fail
 
 	ks=$(wc -c < "/tmp/up/$board/kernel" | tr -d ' ')
 	rs=$(wc -c < "/tmp/up/$board/root" | tr -d ' ')
 	bs=$(part_size "$boot"); rsz=$(part_size "$rootfs")
-	[ "$ks" -le "$bs" ] || fail "kernel ($ks B) does not fit boot ($bs B)"
-	[ "$rs" -le "$rsz" ] || fail "rootfs ($rs B) does not fit rootfs ($rsz B)"
+	[ "$ks" -le "$bs" ] || fail kernel_fit "$ks" "$bs"
+	[ "$rs" -le "$rsz" ] || fail rootfs_fit "$rs" "$rsz"
 
-	echo "board: $board"
-	echo "kernel: $ks bytes -> boot ($boot)"
+	msg board "$board"
+	msg kernel_dest "$ks" "$boot"
 	write_dev "/tmp/up/$board/kernel" "$boot" "kernel"
-	echo "kernel written"
+	msg kernel_done
 
-	echo "rootfs: $rs bytes -> rootfs ($rootfs)"
+	msg rootfs_dest "$rs" "$rootfs"
 	write_dev "/tmp/up/$board/root" "$rootfs" "rootfs"
-	echo "rootfs written"
+	msg rootfs_done
 
 	# sysupgrade -n: no config is preserved, so drop the overlay too.  Zeroing
 	# the head of the partition destroys the filesystem superblock; fstools
 	# then formats a fresh overlay on the next boot.
 	data=$(find_part rootfs_data)
 	if [ -n "$data" ]; then
-		echo "erasing overlay ($data)"
+		msg erasing_ovl "$data"
 		dd if=/dev/zero of="$data" bs=1M count=16 conv=fsync 2>/dev/null
 	fi
 	;;
 
 partition)
-	[ -n "$target" ] || fail "no target partition"
+	[ -n "$target" ] || fail no_target
 	case "$target" in
-		*[!a-z0-9_]*) fail "invalid partition name '$target'" ;;
+		*[!a-z0-9_]*) fail bad_partname "$target" ;;
 	esac
-	dev=$(find_part "$target") || fail "no partition named '$target' on this board"
+	dev=$(find_part "$target") || fail no_part "$target"
 	psz=$(part_size "$dev")
-	[ "$len" -le "$psz" ] || fail "image ($len B) does not fit $target ($psz B)"
+	[ "$len" -le "$psz" ] || fail part_fit "$len" "$target" "$psz"
 
-	echo "writing $len bytes to $target ($dev)"
+	msg writing_part "$len" "$target" "$dev"
 	write_dev "$UPLOAD" "$dev" "$target"
-	echo "$target written"
+	msg part_done "$target"
 	;;
 
 *)
-	fail "unknown mode '$mode'"
+	fail unknown_mode "$mode"
 	;;
 esac
 
 sync
 rm -rf "$UPLOAD" /tmp/up
-echo "DONE"
+msg done

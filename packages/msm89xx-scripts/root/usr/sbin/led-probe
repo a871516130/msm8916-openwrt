@@ -54,7 +54,10 @@ USAGE
 }
 
 # Indicator lamps: everything with a trigger, minus the kernel/control nodes
-# that are not user-facing (eMMC activity, the SIM hotplug line, rfkill, ...).
+# that are not user-facing (eMMC activity, the SIM hotplug line, rfkill, ...)
+# and the GPIO-control "LEDs" some boards expose for things that are not lamps
+# at all (the SIM tray/eSIM select lines on mf32/mf32lt, which the SIM selector
+# drives to pick the active card rather than to light anything).
 led_candidates()
 {
 	local d n
@@ -63,7 +66,7 @@ led_candidates()
 		[ -e "$d/trigger" ] || continue
 		n="${d##*/}"
 		case "$n" in
-			mmc*|sim_hotplug|usb*|rfkill*|input*|*::*) continue ;;
+			mmc*|sim_hotplug|usb*|rfkill*|input*|*::*|*switch_gpio) continue ;;
 		esac
 		printf '%s\n' "$n"
 	done

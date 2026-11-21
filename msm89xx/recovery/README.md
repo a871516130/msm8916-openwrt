@@ -54,8 +54,18 @@ The whole procedure, in the order it has to happen. `<board>` is `hmuf02v5`,
   ./build.sh <board>          # produces openwrt/bin/targets/msm89xx/msm8916/
                               #   ...-generic-<board>-squashfs-boot.img
                               # and build_dir/.../root-msm89xx/lib/modules/<ver>/
+                              # and, for a board whose msm89xx/image/msm8916.mk
+                              # device sets RECOVERY_BOARD (mf32lt), also the
+                              # ...-generic-<board>-recovery.img and the
+                              # flash.sh-ready recovery-<board>.img
   ./build-recovery.sh <board> # fails loudly if either is missing
   ```
+
+  The recovery image is also built automatically by `make` (the
+  `recovery.img` ARTIFACT in `target/linux/msm89xx/image/msm8916.mk`), so a
+  board with `RECOVERY_BOARD` set gets its rescue image in every image build
+  without the manual step.  The manual `./build-recovery.sh <board>` remains
+  for `DRY_RUN=1` and for boards without the make integration.
 
 * Host tools: `python3`, `cpio` (GNU, for `--reproducible`), `gzip`. No docker
   and no kernel build are involved any more.
@@ -243,7 +253,7 @@ frozen and re-attached unchanged to every release by the release workflow
 | :---- | :--- | ---: | :----- | :---------- | :---------------- |
 | `mifib-v12` | `mifib-v12.img` | 11 862 016 | `9edfc760d169a114868f3bc46663f593a318d1eda45d2f8a7fd1e6a2ba52c91f` | its own `boot.img` (2026-11-01 build) | 2026-11-01 — p17 boot + `fastboot boot`; SSH, web UI, **WiFi AP `OpenWrt-Recovery` on wlan0** |
 | `hmuf02v5` | `hmuf02v5.img` | 11 986 944 | `538397cd4392ace6553adb0335628978d186e6d422161faedab534a69256677f` | the device's own p13 (25.12.6-r2 kernel) | 2026-11-01 — `fastboot boot` + p17 boot; SSH, web UI, `reboot-edl`, **WiFi AP `OpenWrt-Recovery` on wlan0 (hostapd, ch 6)** |
-| `mf32lt` | `mf32lt.img` | 12 355 584 | `c4e7f054422b6f0e21ed925f284003d8e86d488e8791b26f4da615c061e4b3ab` | its own `boot.img` (2026-11-15 build) | built 2026-11-15 — **not yet bench-verified**; blobs from the device's own rootfs backup |
+| `mf32lt` | `mf32lt.img` | 12 357 632 | `8876bdd4e66245ab0a1a7d8803758ba8ef2e89b86d2c66587d85ef27eeabc275` | its own `boot.img` (2026-11-20 build, includes the headless GPU patch + `qcom,wcn3680` 5 GHz DTS fix) | built 2026-11-20 — **not yet bench-verified**; blobs from the device's own rootfs backup |
 
 `mf800b` also sets `GPT_RECOVERY=1` but has **no image yet** (the board is not
 on the bench), so `flash.sh` stops at its recovery step there.
