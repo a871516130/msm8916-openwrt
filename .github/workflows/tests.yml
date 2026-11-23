@@ -35,6 +35,17 @@ jobs:
           # board-profile compares the pull request against its base branch.
           fetch-depth: 0
 
+      # A pull request into main may not come from a private branch.  GitHub
+      # has no rule for "which branch may open a pull request", so this is a
+      # step; the publish-private label is how permission is granted.
+      - name: private branch
+        if: github.event_name == 'pull_request'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BASE_REF: ${{ github.base_ref }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ' ') }}
+        run: bash scripts/branch-guard.sh "$HEAD_REF" "$BASE_REF" "$PR_LABELS"
+
       # Hardware-free tests: no modem, no root, no OpenWrt. Each suite is a
       # tests/<name>/run.sh that exits non-zero on failure. --self-check also
       # applies mutants and requires each one to be caught.
@@ -43,6 +54,63 @@ jobs:
 
       - name: led-role
         run: bash tests/led-role/run.sh --self-check
+
+      - name: modem-watchdog
+        run: bash tests/modem-watchdog/run.sh --self-check
+
+      - name: qcom-carrier-autocfg
+        run: bash tests/qcom-carrier-autocfg/run.sh --self-check
+
+      - name: update-notice
+        run: bash tests/update-notice/run.sh --self-check
+
+      - name: apk-overlay-heal
+        run: bash tests/apk-overlay-heal/run.sh --self-check
+
+      - name: time-sync
+        run: bash tests/time-sync/run.sh --self-check
+
+      - name: tailscale-migration
+        run: bash tests/tailscale-migration/run.sh --self-check
+
+      - name: led-templates
+        run: bash tests/led-templates/run.sh --self-check
+
+      - name: usb-gadget-net
+        run: bash tests/usb-gadget-net/run.sh --self-check
+
+      - name: uplink-manager
+        run: bash tests/uplink-manager/run.sh --self-check
+
+      - name: flash-gpt
+        run: bash tests/flash-gpt/run.sh --self-check
+
+      - name: sta-list
+        run: bash tests/sta-list/run.sh --self-check
+
+      - name: usb-gadget-probe
+        run: bash tests/usb-gadget-probe/run.sh --self-check
+
+      - name: usb-gadget-console
+        run: bash tests/usb-gadget-console/run.sh --self-check
+
+      - name: hotfix-scope
+        run: bash tests/hotfix-scope/run.sh --self-check
+
+      - name: apk-flag-guard
+        run: bash tests/apk-flag-guard/run.sh --self-check
+
+      - name: private-guard
+        run: bash tests/private-guard/run.sh --self-check
+
+      # The board scaffolder needs dtc for its .dts input path, and the runner
+      # does not ship it.  The tool writes five files at once, so a silent
+      # mistake there produces a board that builds and does not boot.
+      - name: new-board-tool
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq device-tree-compiler
+          bash tests/new-board-tool/run.sh --self-check
 
       - name: board-profile
         env:

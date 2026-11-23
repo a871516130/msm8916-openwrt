@@ -15,6 +15,11 @@ define Build/generate-squashfs-gpt
 	$(TOPDIR)/target/linux/$(BOARD)/image/generate_squashfs_gpt.sh $@
 endef
 
+# Same generator, size given as an argument.  Every board ships a second table
+# for the smaller eMMC population: the sticks come with either 7,569,408 /
+# 7,634,944 or 7,405,568 sectors, and which one a unit has is only known at
+# flash time.  flash.sh picks the board's own table when it fits the medium and
+# this one otherwise (#103); on a large unit the extra file is simply unused.
 define Build/generate-squashfs-gpt-size
 	chmod +x $(TOPDIR)/target/linux/$(BOARD)/image/generate_squashfs_gpt.sh
 	TOT_SECTORS="$(1)" RECOVERY="$(GPT_RECOVERY)" \
@@ -102,7 +107,8 @@ define Device/generic-ufi003-mb-v02
 	DEVICE_PACKAGES := msm89xx-scripts wpad-basic-wolfssl rmtfs uci-usb-gadget \
 		block-mount f2fs-tools tar \
 		msm-firmware-dumper reboot-edl qcom-carrier-autocfg \
-		diag-efs diag-logtool msm89xx-firmware-upgrade luci-app-update-notify luci-app-led-setup
+		diag-efs diag-logtool msm89xx-firmware-upgrade luci-app-update-notify luci-app-led-setup \
+		kmod-sound-msm8916-voice alsa-utils ufi-voice ufi-voice-asterisk
 endef
 TARGET_DEVICES += generic-ufi003-mb-v02
 
@@ -162,7 +168,8 @@ define Device/generic-mifib-v12
 	DEVICE_PACKAGES := msm89xx-scripts wpad-basic-wolfssl rmtfs uci-usb-gadget \
 		block-mount f2fs-tools tar \
 		msm-firmware-dumper reboot-edl qcom-carrier-autocfg \
-		diag-efs diag-logtool msm89xx-firmware-upgrade luci-app-update-notify luci-app-led-setup luci-app-battery
+		diag-efs diag-logtool msm89xx-firmware-upgrade luci-app-update-notify luci-app-led-setup luci-app-battery \
+		kmod-sound-msm8916-voice alsa-utils ufi-voice ufi-voice-asterisk luci-app-ufi-voice
 endef
 TARGET_DEVICES += generic-mifib-v12
 
@@ -175,8 +182,9 @@ define Device/generic-uf896
     SUPPORTED_DEVICES := uf896,v1.1
     FILESYSTEMS   := squashfs
     # Batteryless UFI-family stick (same 4 GB eMMC as ufi003); the build
-    # default GPT_TOT_SECTORS is used.  flash.sh reads the real size at
-    # flash time, so a mismatch only leaves a little unused space.
+    # default GPT_TOT_SECTORS is used.  flash.sh refuses to write a table that
+    # does not fit the medium, so a unit with the smaller eMMC population stops
+    # before the first write instead of being left in EDL (#71).
     # qmi-utils provides qmicli, needed by etc/init.d/uf896-modem-online
     # to switch the modem out of factory-test mode at boot.
     DEVICE_PACKAGES := msm89xx-scripts wpad-basic-wolfssl rmtfs uci-usb-gadget \
@@ -224,5 +232,21 @@ define Device/generic-mf32lt
 		luci-app-battery luci-i18n-battery-zh-cn qcom-msm8916-gpu-firmware
 endef
 TARGET_DEVICES += generic-mf32lt
+
+define Device/generic-jz0145
+	$(Device/msm8916)
+	DEVICE_VENDOR := Generic
+	DEVICE_MODEL := JZ0145
+	DEVICE_DTS := msm8916-generic-jz0145
+	SUPPORTED_DEVICES := jz0145,v33
+	FILESYSTEMS := squashfs
+	GPT_TOT_SECTORS := 7569408
+	GPT_RECOVERY := 1
+	DEVICE_PACKAGES := msm89xx-scripts wpad-basic-wolfssl rmtfs uci-usb-gadget \
+		block-mount f2fs-tools tar \
+		msm-firmware-dumper reboot-edl qcom-carrier-autocfg \
+		diag-efs diag-logtool msm89xx-firmware-upgrade luci-app-update-notify luci-app-led-setup
+endef
+TARGET_DEVICES += generic-jz0145
 
 endif

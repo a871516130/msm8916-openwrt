@@ -27,6 +27,7 @@ on:
           - uz801
           - jz02
           - mf32lt
+          - jz0145
 
 env:
   UPLOAD_FIRMWARE: true
@@ -133,6 +134,7 @@ jobs:
         name: openwrt_firmware_${{ matrix.device }}_${{ steps.vars.outputs.version }}_${{ env.FILE_DATE }}
         path: |
           ${{ env.FIRMWARE }}/*-msm89xx-*-squashfs-gpt_both0.bin
+          ${{ env.FIRMWARE }}/*-msm89xx-*-squashfs-gpt-7405568.bin
           ${{ env.FIRMWARE }}/*-msm89xx-*-squashfs-boot.img
           ${{ env.FIRMWARE }}/*-msm89xx-*-squashfs-system.img
           ${{ env.FIRMWARE }}/*-msm89xx-*-squashfs-sysupgrade.bin

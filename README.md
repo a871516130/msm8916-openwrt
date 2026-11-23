@@ -22,7 +22,7 @@ Recent additions on top of the base port:
 * **⬆️ In-device firmware upgrade (r3+)** — the device checks the published `firmware.json`, downloads the image for **its own board**, verifies the SHA-256 and flashes it — from **System → Firmware Upgrade** in LuCI or `firmware-upgrade` on the console. No `scp`, no manual download; settings are kept by default (untick **Keep settings** for `sysupgrade -n`), and a `min_version` floor refuses a jump the device could not apply. **This is the first release with it: r1/r2 have no client, so flash r3 by hand once — from r3 on, every release updates itself.**
 * **📦 Custom packages that update without a reflash** — the LED monitors, station-mode helpers, watchdog and upgrade pages live in `packages/` rather than `base-files`, so a fix reaches devices as a **signed package hotfix** (`apk update && apk upgrade <name>`) instead of a 35 MB flash. CI rebuilds the one package against the released toolchain and kernel, splices it into the live feed and re-signs the index; `luci-app-update-notify` shows "N package updates are available" on the dashboard.
 * **📲 Physical SIM hot-swap** — pull the card and insert another: `sim-hotplug` detects the swap, re-announces the card to the baseband, re-reads it through ModemManager and restores data in **~15 s**, with **no reboot** (even a different carrier).
-* **🆘 Rescue image in the recovery partition** — on `hmuf02v5`, `mf800b` and `mifib-v12` the `recovery` partition holds a self-contained rescue system that boots the **production kernel** and brings up USB **and** a Wi-Fi AP (`OpenWrt-Recovery`, 802.11n + WMM) with a web UI to reflash the rootfs, write a single partition or reboot to EDL. Its DHCP lease is address-only, so joining it never hijacks the client's internet. See [`Docs/RECOVERY/`](Docs/RECOVERY/).
+* **🆘 Rescue image in the recovery partition** — the shipped recovery images for `hmuf02v5`, `mifib-v12` and `jz0145` boot the **production kernel** and bring up USB **and** a Wi-Fi AP (`OpenWrt-Recovery`, 802.11n + WMM) with a web UI to reflash the rootfs, write a single partition or reboot to EDL. Its DHCP lease is address-only, so joining it never hijacks the client's internet. See [`Docs/RECOVERY/`](Docs/RECOVERY/).
 * **🛟 Failsafe mode** — a single tap of the **Restart button** during the first 7 s of boot drops a headless dongle into a rescue shell over USB (`192.168.10.1` or `/dev/ttyACM0`); a **5-second hold** performs a factory reset. The failsafe DHCP lease carries no router and no DNS, so plugging the dongle in does not replace the host's default route.
 * **🔵 Bluetooth** — the WCNSS BT core (SMD) with BlueZ 5.83, an SSP pairing-repair guard, and a Bluetooth **Serial Port Profile** server/client (a serial console or TCP bridge over Bluetooth).
 * **🔐 WPA3-SAE Wi-Fi** — PMF/SAE support in the wcn36xx driver, plus **multi-SSID** (two APs on the one radio) and **concurrent AP+STA** (the radio keeps serving its AP while it joins another network as a client).
@@ -74,7 +74,7 @@ Recent additions on top of the base port:
 | :------------ | :---------------- | :------------------------- | :------ | :----- | :-------- | :---------------------- |
 | **`hmuf02v5`**   | `generic-hmuf02v5`   | HMUF02-V5 (was HMU05) (250605 V0S) | MSM8916 | 512 MB | 4 GB eMMC | Green / Blue / Red      |
 | **`ufi001b`** | `generic-ufi001b` | Generic UFI001B 4G Stick   | MSM8916 | 512 MB | 4 GB eMMC | Green / Blue / Red      |
-| **`ufi003`**  | `generic-ufi003-mb-v02` | UFI003 MB V02 | MSM8916 | 512 MB | 4 GB eMMC | Green / Blue / Red      |
+| **`ufi003`**  | `generic-ufi003-mb-v02` | UFI003 MB V02 (also sold as QRZL903-01) | MSM8916 | 512 MB | 4 GB eMMC | Green / Blue / Red      |
 | **`uz801`**   | `yiming-uz801v3`  | YiMing UZ801 v3 Dongle     | MSM8916 | 512 MB | 4 GB eMMC | Green / Blue / Red      |
 | **`uf02`**    | `generic-uf02`    | Generic UF02 / UF2 Stick   | MSM8916 | 512 MB | 4 GB eMMC | Green / Blue / Red      |
 | **`mf800b`**  | `generic-mf800b`  | Generic MF800B 4G MiFi     | MSM8916 | 512 MB | 4 GB eMMC | Bi-colour WLAN/WAN      |
@@ -82,6 +82,7 @@ Recent additions on top of the base port:
 | **`uf896`**     | `generic-uf896`     | UF896 (v1.1) 4G LTE Router  | MSM8916 | 512 MB | 4 GB eMMC | Tri-colour + charger/network/wifi/data LEDs |
 | **`jz02`**      | `generic-jz02`      | JZ02 Battery MiFi (3 SIM switch lines) | MSM8916 | 512 MB | 4 GB eMMC | Network tri-colour + Wi-Fi red + battery red/green |
 | **`mf32lt`**    | `generic-mf32lt`    | MF32LT 4G Modem Stick (3-way SIM/eSIM mux) | MSM8916 | 512 MB | 4 GB eMMC | 4-bar battery + blue Wi-Fi + RGB status |
+| **`jz0145`**    | `generic-jz0145`    | JZ0145 V33 Stick | MSM8916 | 512 MB | 4 GB eMMC | Green / Blue / Red |
 
 ### Per-board feature matrix
 
@@ -97,6 +98,7 @@ Recent additions on top of the base port:
 | `uf896` |    ✅       |    ✅     |          ✅           |          ✅           |           ✅            |         ✅          |         —          |
 | `jz02` |    —       |    ✅     |          ✅           |          ✅           |           ✅            |         ✅          |         —          |
 | `mf32lt`  |      ✅       |    ✅     |          ✅           |          ✅           |           ✅            |         —           |         —          |
+| `jz0145` |    ✅    |    ✅    |          ✅           |          ✅           |           ✅            |         ✅          |         —          |
 
 * UZ801 v3 has no Bluetooth antenna; its image includes the software, but Bluetooth is unavailable on that board.
 * **Concurrent AP+STA** (Station Mode) is available on **every board** — the service, the mac80211 patches and `luci-app-wifi-sta` are all target-wide; see [the guide](Docs/WiFi/AP_STA_AND_LUCI_APP.md).
@@ -115,6 +117,7 @@ Recent additions on top of the base port:
 | `uf896` |         —           |      —      |         —         |      —      |
 | `jz02` |         ✅           |      ✅      |         ✅         |      —      |
 | `mf32lt` |         ✅           |      ✅      |         ✅         |      —      |
+| `jz0145` |       —            |      —       |         ✅         |      —      |
 
 * **Recovery partition** — the 17-partition layout (`misc` + `recovery`).  A `—` means the board keeps the 15-partition layout; see [`Docs/RECOVERY/`](Docs/RECOVERY/).
 * **3-SIM selection** — the JZ02 has three SIM switch lines (GPIO 1 / 22 / 23) but only the external slot (3) is accessible on the tested unit; the `sim-select` init script picks the slot from `uci sim.slot` (default 3). It is not automatic hot-swap.
@@ -122,7 +125,7 @@ Recent additions on top of the base port:
 * **Power button** — mifib-v12, mf800b and jz02 have a `pm8941_pwrkey`; the `mf32lt` uses a GPIO key instead (GPIO 34 → `KEY_POWER`, handled by `etc/rc.button/power`: double press reboots, 4 s hold powers off); see [`Docs/POWER_BUTTON.md`](Docs/POWER_BUTTON.md).
 * **SIM hot-swap** — the `sim-hotplug` service ships and is enabled on **every** board.  The table marks where the `sim_hotplug` line has been **confirmed**: HMUF02-V5 (verified end-to-end, ~15 s) and mifib-v12 (same modem family, enabled, not yet soaked).  A `—` means the line is untested on that board, not that the service is missing — see [`Docs/SIM_HOT_SWAP.md`](Docs/SIM_HOT_SWAP.md).
 
-> The Wi-Fi/PMIC cooling maps are in the **shared `msm8916-ufi.dtsi`** (patch 861), which every board in the target includes, so all boards get them. The `a2_pin` modem-rail hold is enabled on the **HMUF02-V5, UZ801, UF02, HM-MIFIB-V12, JZ02 and UFI003** boards — the first four carry the same HiMI baseband family (`HIMI_U01_MODEM_V1.0`) exposed to the `a2_power.c:1189` quiesce wedge, the JZ02 (`M8936FAAAANUZM`) hit the same SSR loop (`modem pc-ack timeout during resume`), and UFI003's board DTS sets `qcom,a2-pin` on `&bam_dmux`; `UFI001B` (modem `MPSS.DPM.2.0.2`, V2.0), `MF800B` and `MF32LT` do not set it, and **UF896 does not need it** (field-tested on real hardware — no `a2_power.c:1189` quiesce wedge was observed). Everything else applies to every board. Failsafe mode is enabled on **every board except the JZ02**, whose reset pinhole is not software-visible (hardware test: no GPIO, PMIC-GPIO or power-key event), so it has no button-triggered rescue mode; it has been **live-verified on the HMUF02-V5** only.
+> The Wi-Fi/PMIC cooling maps are in the **shared `msm8916-ufi.dtsi`** (patch 861), which every board in the target includes, so all boards get them. The `a2_pin` modem-rail hold is enabled on the **HMUF02-V5, UZ801, UF02, HM-MIFIB-V12, JZ02 and UFI003** boards — the first four carry the same HiMI baseband family (`HIMI_U01_MODEM_V1.0`) exposed to the `a2_power.c:1189` quiesce wedge, the JZ02 (`M8936FAAAANUZM`) hit the same SSR loop (`modem pc-ack timeout during resume`), and UFI003's board DTS sets `qcom,a2-pin` on `&bam_dmux`; `UFI001B` (modem `MPSS.DPM.2.0.2`, V2.0), `MF800B` and `MF32LT` do not set it, and **UF896 does not need it** (field-tested on real hardware — no `a2_power.c:1189` quiesce wedge was observed). Everything else applies to every board. Failsafe mode is enabled on **every board except the JZ02**, whose reset pinhole is not software-visible (hardware test: no GPIO, PMIC-GPIO or power-key event), so it has no button-triggered rescue mode; it has been **live-verified on the HMUF02-V5 and JZ0145**.
 
 ### 🛠️ Adding a new board
 
@@ -135,10 +138,11 @@ Want to port a new MSM8916 device? See **[`Docs/ADDING_A_DEVICE_BOARD.md`](Docs/
 OpenWrt provides both an in-band rescue shell (**failsafe mode**) and
 software-triggered reboot paths for Qualcomm recovery modes.
 
-On the three boards with the 17-partition layout (**hmuf02v5**, **mf800b**,
-**mifib-v12**) there is also a real **recovery partition**: hold the reset
-button at power-on, run `reboot-recovery`, use **System → Reboot to Recovery**
-in LuCI, or let the bootloader fall back to it after three failed boots.  See
+On the five boards with the 17-partition layout (**hmuf02v5**, **mf800b**,
+**mifib-v12**, **jz02**, **jz0145**) there is also a real **recovery partition**: run
+`reboot-recovery`, use **System → Reboot to Recovery** in LuCI, or let the
+bootloader fall back to it after three failed boots. The physical recovery key
+is board-specific. See
 **[`Docs/RECOVERY/`](Docs/RECOVERY/)** for the layout, the key per board and the
 failover counter.
 
@@ -228,7 +232,7 @@ Put the USB modem into **Qualcomm Emergency Download (EDL) Mode** using any of t
 * Short the hardware **EDL test points** while plugging the stick into a USB port.
 * From Android shell (where ADB is available): `adb reboot edl`
 * From OpenWrt shell: `reboot-edl`
-* From LuCI: **System → Reboot to EDL** (installed by the `reboot-edl` package). On boards with a recovery partition (`hmuf02v5` / `mf800b` / `mifib-v12`) the same menu also offers **System → Reboot to Recovery**.
+* From LuCI: **System → Reboot to EDL** (installed by the `reboot-edl` package). On boards with a recovery partition (`hmuf02v5` / `mf800b` / `mifib-v12` / `jz02` / `jz0145`) the same menu also offers **System → Reboot to Recovery**.
 
 Verify that the host detects the device in Qualcomm EDL mode:
 
@@ -276,7 +280,7 @@ Choice [1/2/3/4]:
 
 * **Full-Device Dump (recommended first)**: `./...flash.sh --mode backup` reads the **whole device** over EDL — either as one raw image (`edl rf` → `./<device>-dump.bin`) or partition-wise (`edl rl` → `./<device>-dump/`, restore one partition with `edl w <part> <file>`). The dump is **named after the device**: the name comes from `--device-name`, a remembered `.flash-device-name`, or a prompt at backup time, so a dump from one unit is never mistaken for another's. Before any destructive mode the script checks for a dump **for this device** and, unless `--yes`, refuses to continue without one.
 * **Safety Backup**: Backs up all critical device-unique radio/calibration partitions (`fsc`, `fsg`, `modemst1`, `modemst2`, `modem`, `persist`, `sec`) into a local `saved/` directory. Every read is validated; if any backup fails (error, or an empty/short file) the script **aborts before writing anything**, leaving the device untouched.
-* **GPT Repartitioning**: Flashes the OpenWrt partition table (`*-squashfs-gpt_both0.bin`) via raw sector writes (`primary.bin`, `backup_entries.bin`, `backup_header.bin`) to repartition the eMMC safely.
+* **GPT Repartitioning**: Flashes the OpenWrt partition table (`*-squashfs-gpt_both0.bin`) via raw sector writes (`primary.bin`, `backup_entries.bin`, `backup_header.bin`) to repartition the eMMC safely. Units that shipped with the smaller 7,405,568-sector eMMC get the board's `*-squashfs-gpt-7405568.bin` table instead — the script reads the medium's real size first and never writes a table past its end.
 * **Firmware Extraction & Flashing**: Extracts `aboot.mbn`, `hyp.mbn`, `rpm.mbn`, `sbl1.mbn`, and `tz.mbn` from the board's `*-firmware.zip` and flashes them to the newly repartitioned layout.
 * **OpenWrt Installation**: Flashes the OpenWrt kernel/boot image (`*-squashfs-boot.img`), the rootfs system image (`*-squashfs-system.img`), and wipes `rootfs_data` (fast 2 MiB superblock wipe, reformatted on next boot).
 * **Partition Restoration**: Restores all previously backed-up calibration and radio partitions back to the device.
@@ -341,7 +345,7 @@ this mode rewrites the GPT to add `misc` + `recovery` and flashes the rescue
 image **without touching `boot`/`rootfs`**.
 
 > **Only applies to boards whose image ships a `recovery` partition** —
-> `hmuf02v5`, `mf800b`, `mifib-v12`, `jz02` and `mf32lt` are built with `GPT_RECOVERY=1`. On
+> `hmuf02v5`, `mf800b`, `mifib-v12`, `jz02`, `mf32lt` and `jz0145` are built with `GPT_RECOVERY=1`. On
 > the other five boards the script aborts before writing anything. The `jz02`
 > build carries the partitions but has no published `recovery-<board>.img` yet,
 > which the script also requires; `mf32lt` ships one since 2026-11-15.
@@ -430,6 +434,18 @@ The WCN36xx 2.4 GHz radio comes up automatically on first boot and broadcasts an
 * **Multi-SSID** is supported: up to **two AP interfaces** on the same radio (for example a main SSID and a guest SSID).
 * **Concurrent AP + STA** is supported: the radio keeps beaconing its AP **and** joins another network as a client. Configure it from **Network → Station Mode** (or `/etc/config/wifista`) — see [Concurrent AP+STA and the Station Mode LuCI app](Docs/WiFi/AP_STA_AND_LUCI_APP.md). The station is created by a service **after** the AP is up; it is deliberately *not* a `wifi-iface`, because netifd restarts the phy on every wireless change and a phy restart with a station interface configured crashes the WCNSS firmware.
 
+> [!WARNING]
+> **Do not disable U-APSD.** Leave `wireless.default_radio0.uapsd_advertisement_enabled` at `1`.
+> With it off, an Android client falls back to legacy PS-Poll: the AP buffers frames until the DTIM
+> and the client wakes in a narrow window, which pins the link at MCS0 and gives second-scale
+> latency. The misleading part is that `tx retries`, `tx failed` and interface drops all stay at
+> **zero** — nothing is being retried, the frames are simply waiting for the client's next wake
+> window. Measured on one UFI003, same phone, same spot, same traffic: with `uapsd=0`, ping loss
+> AP→phone 16–100 % and RTT 2.8–3.8 s at 6.5 Mbit/s MCS0; with `uapsd=1`, 0 % loss over 9/9 samples
+> across 5 minutes, RTT 4–93 ms, 65–72 Mbit/s MCS7. A re-association clears the symptom, so it looks
+> fixed for a few minutes and sends you looking at rate control, RF and the driver instead of the
+> flag you changed.
+
 > [!NOTE]
 > Saving anything under *Network → Wireless* restarts the phy — the very thing that crashes the firmware. That is handled: netifd's wireless driver is wrapped by `wifi-sta-guard` (`openwrt-patches/811`), which stops the station before the phy is touched and restarts it afterwards, so **`wifi reload` and Save & Apply are safe with station mode up**. Only a radio reset that bypasses netifd (a raw `iw dev del`, `rmmod wcn36xx`, a driver rebind) still needs the manual sequence:
 > ```sh
@@ -515,7 +531,7 @@ The Qualcomm baseband on these sticks can hit a **~900 s deadline** after a warm
 | :--- | :--- |
 | **`a2_pin` (HMUF02-V5, UZ801, UF02, UFI003)** | Holds the A2 power rail **on** in the `qcom_bam_dmux` driver so the modem is not power-collapsed mid-handshake. Enabled via device tree on these boards. |
 | **`himi-ok-guard`** | Rewrites the modem NV item `HiMI_OK` after **every** modem boot (cold and each SSR), so the RF task's identity check passes and the ~900 s deadline never arms. Enabled on the HMUF02-V5, UZ801 v3 and UF02 boards; writes only when the item reads all-zero (factory data is never overwritten). |
-| **`modem-bearer-watchdog`** | Watches the modem and data bearer; performs a pre-emptive subsystem restart and recovers a zombie bearer/ModemManager without a reboot. Automatically switches to a handover-safe **30/5 stall profile when moving** (`auto_mobile`, on by default — detects serving-cell changes over ModemManager D-Bus), reverting to the stationary profile after `mobile_grace_secs` (180 s) of stillness, and vice versa. A manual `mobile_optimized` force mode is also available. |
+| **`modem-bearer-watchdog`** | Watches the modem and data bearer; performs a pre-emptive subsystem restart and recovers a zombie bearer/ModemManager without a reboot. Automatically switches to a handover-safe **30/5 stall profile when moving** (`auto_mobile`, on by default — detects serving-cell changes over ModemManager D-Bus), reverting to the stationary profile after `mobile_grace_secs` (180 s) of stillness, and vice versa. A manual `mobile_optimized` force mode is also available. Optional voice-only SIM handling (`voice_alive`, `data_plan`, `drop_default_route`) is off by default; see [watchdog configuration](Docs/Modem%20Stability/MODEM_BEARER_WATCHDOG.md#2-configuration). |
 | **`qcom-time-daemon`** | Anchors the modem's time base (ATS) before LTE attach so the QMI time sync is valid. |
 
 Verify the guard is active:
@@ -649,6 +665,32 @@ logread -f -e carrier-autocfg
 
 ---
 
+## 🌐 IPv6 on the LAN
+
+`network.lan.ip6assign='60'` is the **stock OpenWrt default**, and the LAN bridge
+advertises an IPv6 prefix by router advertisement. On a carrier that routes only
+the modem's own `/128` — no prefix delegation, no NAT66 — clients still configure
+a global address from that advertisement, prefer it over IPv4, and stall. On
+Android the network shows "connected, no internet" and stops auto-reconnecting.
+
+This is documented rather than changed: a carrier that *does* delegate a routable
+prefix must keep working, and the two cases look identical in configuration. If
+you see the symptom, stop advertising on the LAN:
+
+```sh
+uci set dhcp.lan.ra='disabled'
+uci set dhcp.lan.dhcpv6='disabled'
+uci set dhcp.lan.ndp='disabled'
+uci commit dhcp
+/etc/init.d/odhcpd restart
+```
+
+The router keeps its own IPv6; clients fall back to IPv4 only. The full
+explanation, the stronger `network.lan.ipv6='0'` variant, and how to re-enable
+it are in [`Docs/IPV6_ON_LAN.md`](Docs/IPV6_ON_LAN.md).
+
+---
+
 ## 📂 Partition Layout (eMMC /dev/mmcblk0)
 
 | Partition    | Label               | Size     | Type     | Purpose                                                              |
@@ -669,17 +711,22 @@ This repository hosts a live APK feed on GitHub Pages with all pre-compiled Qual
 
 The feed is **signed with a pinned key**. Every image ships the matching public key and a boot service (`apk-key-refresh`) that re-syncs it from a stable URL, so a device flashed with an older image can never be left rejecting the feed with `UNTRUSTED signature`.
 
-### Enable Custom Feeds on Device
+### Package Feeds (already configured)
+
+Every feed URL this project serves is written into
+`/etc/apk/repositories.d/distfeeds.list` at build time, from the release the
+image was built for, so a device tracks its own release with no help:
 
 ```bash
-cat << 'EOF' > /etc/apk/repositories.d/customfeeds.list
-https://akbar-npj.github.io/msm8916-openwrt/releases/25.12.6/targets/msm89xx/msm8916/packages/packages.adb
-https://akbar-npj.github.io/msm8916-openwrt/releases/25.12.6/packages/aarch64_generic/base/packages.adb
-https://akbar-npj.github.io/msm8916-openwrt/releases/25.12.6/packages/aarch64_generic/packages/packages.adb
-EOF
-
 apk update
+cat /etc/apk/repositories.d/distfeeds.list
 ```
+
+`customfeeds.list` is the upstream placeholder for feeds *you* add, and
+`msm89xx-customfeeds.list` carries the upstream `download.openwrt.org` packages
+(telephony, video, …). Do not add this project's URLs to `customfeeds.list` by
+hand: they are already in `distfeeds.list`, and a hand-copied line pins one
+release version and silently stops tracking it at the next firmware update.
 
 ### Install Extra Drivers & Packages
 
@@ -706,6 +753,21 @@ apk upgrade luci-app-firmware-upgrade  # the upgrade page
 
 CI rebuilds the one changed package against the **same toolchain and kernel** as the released firmware, splices it into this feed and re-signs the index with the pinned key — so no repository line and no key ever change on the device. `luci-app-update-notify` puts a *"N package updates are available"* notice on the dashboard.
 
+`apk upgrade` also ends with an error that is expected, not a fault:
+
+```
+The following packages are no longer available from a repository:
+  base-files
+1 error; 309 packages
+```
+
+`base-files` is pinned in `/etc/apk/world` (every OpenWrt image does this) and the
+shared feed deliberately does not carry it, so a device on an older revision is
+never offered an update it cannot apply. The upgrades listed above the message
+are still applied — only the exit status is affected. Do **not** reach for
+`apk upgrade --prune` to silence it: apk treats the unavailable `base-files` as
+prunable and deletes it.
+
 What a hotfix **cannot** carry is anything baked into the image — the kernel, a driver, a preinit hook, `base-files`. Those need a firmware release, which the device then installs itself (see [Upgrading from the device](#-upgrading-from-the-device-r3-and-later)). The full process is in [Releases & Hotfixes](https://github.com/akbar-npj/msm8916-openwrt/wiki/How-Releases-and-Hotfixes-Work).
 
 The packages authored and vendored in this repo (DIAG tools, carrier autoconfig,
@@ -715,6 +777,24 @@ Bluetooth SPP, LuCI apps, …) are documented in
 Every custom on-device program answers `--help` (or `-h`) with its options, the
 `uci` keys it reads, and the `logread` tag to watch — for example
 `diag-bind --help`, `modem-bearer-watchdog --help`, `diag_nv --help`.
+
+---
+
+## 🙏 Acknowledgements
+
+**VoLTE and call audio** exist here because of
+**[@isprogrammer](https://github.com/isprogrammer)**, whose
+[`voice_calls_new`](https://github.com/isprogrammer/msm8916-openwrt/tree/voice_calls_new) branch
+we ported rather than reinvented: the `q6voice` kernel patch, the `ufi-voice` package
+(`imsdcm` verbatim, `ufi-voiced` as the base), the voice-aware `modem-bearer-watchdog` gate and
+its test suite, and the LuCI watchdog options. The `q6voice` driver inside that patch is
+**Stephan Gerhold**'s work from [msm8916-mainline](https://github.com/msm8916-mainline/linux).
+The exact file-by-file record is in
+[`Docs/Modem Stability/221_VOLTE_GUIDE.md`](Docs/Modem%20Stability/221_VOLTE_GUIDE.md#17-acknowledgements-and-provenance).
+
+Board bring-up, the failsafe console, the modem-stability investigation and the DIAG tooling are
+the work of this repo's maintainers and contributors; per-board credits are listed in
+[`MAINTAINERS.md`](MAINTAINERS.md).
 
 ---
 
