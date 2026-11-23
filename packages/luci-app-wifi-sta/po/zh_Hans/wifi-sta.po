@@ -1,0 +1,345 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Station Mode"
+msgstr "Station 模式"
+
+msgid "A client interface on the same radio as the access point. The access point is moved to the upstream’s channel automatically, because one radio can only use one channel at a time."
+msgstr "与接入点共用同一射频的客户端接口。接入点会自动切换到上游信道，因为一个射频同一时间只能使用一个信道。"
+
+msgid "Enable station mode"
+msgstr "启用 Station 模式"
+
+msgid "Off by default. The interface is created a few seconds after the access point is up."
+msgstr "默认关闭。接口在接入点启动后几秒创建。"
+
+msgid "Hostname to announce"
+msgstr "通告的主机名"
+
+msgid "Sent to the upstream network as the DHCP hostname (option 12), so the upstream router can resolve this device by name. Leave empty to use the system hostname (%s)."
+msgstr "作为 DHCP 主机名（选项 12）发送到上游网络，使上游路由器可通过名称解析此设备。留空则使用系统主机名（%s）。"
+
+msgid "(system hostname)"
+msgstr "（系统主机名）"
+
+msgid "Station MAC address"
+msgstr "Station MAC 地址"
+
+msgid "Must differ from the access point’s address, otherwise the interface cannot be brought up."
+msgstr "必须与接入点的地址不同，否则接口无法启动。"
+
+msgid "Expected six colon-separated hex octets"
+msgstr "应为六个冒号分隔的十六进制字节"
+
+msgid "Request an address (DHCP)"
+msgstr "请求地址（DHCP）"
+
+msgid "Ask the upstream access point for an address."
+msgstr "向上游接入点请求地址。"
+
+msgid "Use this link as an internet uplink"
+msgstr "使用此链路作为互联网上行链路"
+
+msgid "When the modem has no data connection, send traffic and DNS through the upstream access point. The modem keeps priority while it has a default route, so this only takes over when the mobile link is down."
+msgstr "当调制解调器无数据连接时，通过上游接入点发送流量和 DNS。只要调制解调器有默认路由就保持优先，因此仅在移动链路断开时才接管。"
+
+msgid "Uplink route metric"
+msgstr "上行链路路由跃点"
+
+msgid "Higher than the modem’s, so the mobile link stays the default route while it works."
+msgstr "高于调制解调器的值，使移动链路在正常工作时保持为默认路由。"
+
+msgid "Radio whose channel follows the upstream"
+msgstr "信道跟随上游的射频"
+
+msgid "Watchdog timeout (seconds)"
+msgstr "看门狗超时（秒）"
+
+msgid "How long the station may stay down before it is recycled. 0 disables the check."
+msgstr "Station 可以断开多长时间后被回收。0 禁用检查。"
+
+msgid "Wait for the AP at start (seconds)"
+msgstr "启动时等待 AP（秒）"
+
+msgid "Saved networks"
+msgstr "已保存的网络"
+
+msgid "Every enabled row is handed to wpa_supplicant; it joins whichever is in range and moves on to the next one when a password is rejected. A rejected password is reported on the Status page."
+msgstr "每个启用的行都会交给 wpa_supplicant；它会加入范围内可用的网络，密码被拒绝时尝试下一个。被拒绝的密码会在状态页面报告。"
+
+msgid "Add network"
+msgstr "添加网络"
+
+msgid "SSID"
+msgstr "SSID"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "(leave empty for an open network)"
+msgstr "（开放网络请留空）"
+
+msgid "Disabled"
+msgstr "已禁用"
+
+msgid "Keep the row but never try it."
+msgstr "保留此行但永不尝试。"
+
+msgid "Enter the network name (SSID) for this password."
+msgstr "请输入此密码对应的网络名称（SSID）。"
+
+msgid "An SSID is at most 32 characters."
+msgstr "SSID 最多 32 个字符。"
+
+msgid "A WPA password is 8 to 63 characters (or 64 hex digits)."
+msgstr "WPA 密码为 8 到 63 个字符（或 64 位十六进制数字）。"
+
+msgid "Nearby networks"
+msgstr "附近网络"
+
+msgid "Press Scan to list what this radio can see."
+msgstr "点击扫描列出此射频可见的网络。"
+
+msgid "The access point interface was not found — is Wi-Fi up? Try again in a moment."
+msgstr "未找到接入点接口 — Wi-Fi 是否已启动？请稍后重试。"
+
+msgid "Scanning…"
+msgstr "正在扫描…"
+
+msgid "No networks found."
+msgstr "未找到网络。"
+
+msgid "Scan failed: %s"
+msgstr "扫描失败：%s"
+
+msgid "Channel"
+msgstr "信道"
+
+msgid "Signal"
+msgstr "信号"
+
+msgid "Encryption"
+msgstr "加密"
+
+msgid "Use"
+msgstr "使用"
+
+msgid "Scan"
+msgstr "扫描"
+
+msgid "%s is already saved. Change its password above if needed, then Save & Apply."
+msgstr "%s 已保存。如需修改密码请在上方更改，然后保存并应用。"
+
+msgid "%s is an open network — no password needed. Press Save & Apply."
+msgstr "%s 是开放网络 — 无需密码。点击保存并应用。"
+
+msgid "SSID set to %s — type its password above, then Save & Apply."
+msgstr "SSID 已设为 %s — 请在上方输入密码，然后保存并应用。"
+
+msgid "Added %s — type its password above, then Save & Apply."
+msgstr "已添加 %s — 请在上方输入密码，然后保存并应用。"
+
+msgid "Could not add %s: %s"
+msgstr "无法添加 %s：%s"
+
+msgid "Wrong password for %s — correct it above and save again."
+msgstr "%s 密码错误 — 请在上方更正后重新保存。"
+
+msgid "Station mode is disabled."
+msgstr "Station 模式已禁用。"
+
+msgid "Connected to %s"
+msgstr "已连接到 %s"
+
+msgid "Not connected. A saved network is tried in order; a rejected password is reported here."
+msgstr "未连接。按顺序尝试已保存的网络；被拒绝的密码会在此报告。"
+
+msgid "Access point"
+msgstr "接入点"
+
+msgid "not running"
+msgstr "未运行"
+
+msgid "State"
+msgstr "状态"
+
+msgid "Clients"
+msgstr "客户端"
+
+msgid "Station interface"
+msgstr "Station 接口"
+
+msgid "connected"
+msgstr "已连接"
+
+msgid "not connected"
+msgstr "未连接"
+
+msgid "Upstream SSID"
+msgstr "上游 SSID"
+
+msgid "Upstream BSSID"
+msgstr "上游 BSSID"
+
+msgid "Tx bitrate"
+msgstr "发送速率"
+
+msgid "Address"
+msgstr "地址"
+
+msgid "Handshake-timeout reloads"
+msgstr "握手超时重载次数"
+
+msgid "not present"
+msgstr "不存在"
+
+msgid "Wrong password: "
+msgstr "密码错误："
+
+msgid "the saved network %s rejected the password. Open the Configuration tab, correct it and Save & Apply — the device keeps trying the other saved networks meanwhile."
+msgstr "已保存的网络 %s 拒绝了密码。打开配置选项卡更正并保存并应用 — 设备会同时继续尝试其他已保存的网络。"
+
+msgid "Channel mismatch. "
+msgstr "信道不匹配。"
+
+msgid "The access point is on channel %s but the station is on %s. One radio can only use one channel — restart the service to make the AP follow the upstream."
+msgstr "接入点在信道 %s，而 Station 在信道 %s。一个射频只能使用一个信道 — 重启服务使 AP 跟随上游。"
+
+msgid "Station mode is enabled but the station is not connected. The watchdog retries every %s s; see the log below for the reason."
+msgstr "Station 模式已启用但 Station 未连接。看门狗每 %s 秒重试一次；请查看下方日志了解原因。"
+
+msgid "Crash risk: "
+msgstr "崩溃风险："
+
+msgid "the wireless config still has a station interface (%s). A radio restart with that configured crashes the WCNSS firmware — disable it in Network → Wireless and use this page instead."
+msgstr "无线配置中仍有 Station 接口（%s）。配置了该接口后重启射频会导致 WCNSS 固件崩溃 — 请在网络 → 无线中禁用它，改用本页面。"
+
+msgid "Station"
+msgstr "Station"
+
+msgid "Command failed: %s"
+msgstr "命令失败：%s"
+
+msgid "Station mode log"
+msgstr "Station 模式日志"
+
+msgid "(empty)"
+msgstr "（空）"
+
+msgid "Close"
+msgstr "关闭"
+
+msgid "Status "
+msgstr "状态 "
+
+msgid "enabled"
+msgstr "已启用"
+
+msgid "disabled"
+msgstr "已禁用"
+
+msgid "Service restarted."
+msgstr "服务已重启。"
+
+msgid "Service stopped."
+msgstr "服务已停止。"
+
+msgid "Service started."
+msgstr "服务已启动。"
+
+msgid "Restart service"
+msgstr "重启服务"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Show log"
+msgstr "显示日志"
+
+msgid "A second, client-side Wi-Fi interface on the same radio as the access point. "
+msgstr "与接入点共用同一射频的第二个客户端 Wi-Fi 接口。"
+
+msgid "It is created by a service after the AP is up — it is deliberately not part of the wireless config, because a radio restart with a station interface configured crashes the Wi-Fi firmware."
+msgstr "它由服务在 AP 启动后创建 — 刻意不放入无线配置，因为配置了 Station 接口后重启射频会导致 Wi-Fi 固件崩溃。"
+
+msgid "Uplink"
+msgstr "上行链路"
+
+msgid "Uplink policy"
+msgstr "上行链路策略"
+
+msgid "Choose which path to the internet is preferred and how a failed link is detected. With policy \"Auto\" the modem wins while it is healthy and the Wi-Fi station takes over when the modem has no route or fails its health probe. The station DNS defaults to 8.8.8.8 8.8.4.4."
+msgstr "选择首选的互联网路径以及如何检测链路故障。策略为\"自动\"时，调制解调器健康时优先，调制解调器无路由或健康探测失败时 Wi-Fi Station 接管。Station DNS 默认为 8.8.8.8 8.8.4.4。"
+
+msgid "Policy"
+msgstr "策略"
+
+msgid "Auto (modem first, station fallback)"
+msgstr "自动（调制解调器优先，Station 备用）"
+
+msgid "Modem only"
+msgstr "仅调制解调器"
+
+msgid "Station preferred"
+msgstr "Station 优先"
+
+msgid "Station DNS"
+msgstr "Station DNS"
+
+msgid "DNS servers advertised on the station uplink (space separated). Leave empty to use the DHCP-provided DNS."
+msgstr "在 Station 上行链路上通告的 DNS 服务器（空格分隔）。留空使用 DHCP 提供的 DNS。"
+
+msgid "Probe target"
+msgstr "探测目标"
+
+msgid "Probe interval (s)"
+msgstr "探测间隔（秒）"
+
+msgid "Probe timeout (s)"
+msgstr "探测超时（秒）"
+
+msgid "Failures to mark down"
+msgstr "判定断开的失败次数"
+
+msgid "Successes to mark up"
+msgstr "判定正常的成功次数"
+
+msgid "The dual-uplink manager selects the default route between the LTE modem and the Wi-Fi station, with health probes and a user policy."
+msgstr "双上行链路管理器在 LTE 调制解调器和 Wi-Fi Station 之间选择默认路由，支持健康探测和用户策略。"
+
+msgid "Active uplink: "
+msgstr "活动上行链路："
+
+msgid "Link"
+msgstr "链路"
+
+msgid "Device"
+msgstr "设备"
+
+msgid "Gateway"
+msgstr "网关"
+
+msgid "DNS"
+msgstr "DNS"
+
+msgid "Modem (LTE)"
+msgstr "调制解调器（LTE）"
+
+msgid "Wi-Fi station"
+msgstr "Wi-Fi Station"
+
+msgid "healthy"
+msgstr "健康"
+
+msgid "present, probing"
+msgstr "存在，探测中"
+
+msgid "down"
+msgstr "断开"

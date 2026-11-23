@@ -3,7 +3,7 @@
 define KernelPackage/qcom-rproc
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Qualcomm remoteproc support
-  DEPENDS:=@TARGET_msm89xx
+  DEPENDS:=@TARGET_msm89xx +kmod-sound-soc-core
   KCONFIG:=\
     CONFIG_QCOM_RPROC_COMMON \
     CONFIG_QCOM_PIL_INFO
@@ -79,7 +79,7 @@ $(eval $(call KernelPackage,qcom-rproc-modem))
 define KernelPackage/rpm-master-stats
   SUBMENU:=$(OTHER_MENU)
   TITLE:=Qualcomm RPM master sleep statistics
-  DEPENDS:=@TARGET_msm89xx
+  DEPENDS:=@TARGET_msm89xx +kmod-sound-soc-core
   KCONFIG:=CONFIG_QCOM_RPM_MASTER_STATS
   FILES:=$(LINUX_DIR)/drivers/soc/qcom/rpm_master_stats.ko
 endef
@@ -168,7 +168,7 @@ $(eval $(call KernelPackage,btqcomsmd))
 define KernelPackage/sched-bbr
   SUBMENU:=$(NETWORK_SUPPORT_MENU)
   TITLE:=BBR TCP congestion control
-  DEPENDS:=@TARGET_msm89xx
+  DEPENDS:=@TARGET_msm89xx +kmod-sound-soc-core
   KCONFIG:=CONFIG_TCP_CONG_BBR
   FILES:=$(LINUX_DIR)/net/ipv4/tcp_bbr.ko
   AUTOLOAD:=$(call AutoLoad,30,tcp_bbr)
@@ -191,3 +191,4 @@ define KernelPackage/sched-bbr/description
 endef
 
 $(eval $(call KernelPackage,sched-bbr))
+

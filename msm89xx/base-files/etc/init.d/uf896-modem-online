@@ -10,7 +10,7 @@ start() {
     . /lib/functions.sh
     local board="$(board_name)"
     case "$board" in
-        *uf896*)
+        *uf896*|*mf32lt*)
             ;;
         *)
             return 0

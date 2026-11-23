@@ -1,0 +1,237 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Cellular Network"
+msgstr "蜂窝网络"
+
+msgid "Modem"
+msgstr "Modem"
+
+msgid "IMEI"
+msgstr "IMEI"
+
+msgid "Device identifier"
+msgstr "设备标识符"
+
+msgid "Manufacturer"
+msgstr "制造商"
+
+msgid "Model"
+msgstr "型号"
+
+msgid "Revision"
+msgstr "固件版本"
+
+msgid "DBUS path"
+msgstr "DBUS 路径"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Modem state"
+msgstr "Modem 状态"
+
+msgid "Power state"
+msgstr "电源状态"
+
+msgid "Failed reason"
+msgstr "失败原因"
+
+msgid "Carrier configuration"
+msgstr "运营商配置"
+
+msgid "Own numbers"
+msgstr "本机号码"
+
+msgid "Network registration"
+msgstr "网络注册"
+
+msgid "Operator"
+msgstr "运营商"
+
+msgid "Operator code"
+msgstr "运营商代码"
+
+msgid "Registration state"
+msgstr "注册状态"
+
+msgid "Packet service state"
+msgstr "分组业务状态"
+
+msgid "Access technologies"
+msgstr "接入技术"
+
+msgid "APN"
+msgstr "APN"
+
+msgid "UE mode operation"
+msgstr "UE 模式操作"
+
+msgid "MiCo mode"
+msgstr "MiCo 模式"
+
+msgid "DRX cycle"
+msgstr "DRX 周期"
+
+msgid "Signal quality"
+msgstr "信号质量"
+
+msgid "recent"
+msgstr "近期"
+
+msgid "average"
+msgstr "平均"
+
+msgid "Network rejection"
+msgstr "网络拒绝"
+
+msgid "Rejection error"
+msgstr "拒绝错误"
+
+msgid "Rejected operator id"
+msgstr "被拒运营商 ID"
+
+msgid "Rejected operator name"
+msgstr "被拒运营商名称"
+
+msgid "Rejected access technology"
+msgstr "被拒接入技术"
+
+msgid "QMI radio layer"
+msgstr "QMI 射频层"
+
+msgid "Serving registration state"
+msgstr "服务注册状态"
+
+msgid "Roaming status"
+msgstr "漫游状态"
+
+msgid "Current PLMN"
+msgstr "当前 PLMN"
+
+msgid "Active band class"
+msgstr "活动频段类别"
+
+msgid "Active channel"
+msgstr "活动信道"
+
+msgid "SIM card"
+msgstr "SIM 卡"
+
+msgid "Active SIM slot"
+msgstr "活动 SIM 卡槽"
+
+msgid "ICCID"
+msgstr "ICCID"
+
+msgid "IMSI"
+msgstr "IMSI"
+
+msgid "Slot"
+msgstr "卡槽"
+
+msgid "Card state"
+msgstr "卡状态"
+
+msgid "UPIN state"
+msgstr "UPIN 状态"
+
+msgid "SIM slot switching"
+msgstr "SIM 卡槽切换"
+
+msgid "Active SIM"
+msgstr "活动 SIM"
+
+msgid "Physical SIM"
+msgstr "实体 SIM"
+
+msgid "eSIM 1"
+msgstr "eSIM 1"
+
+msgid "eSIM 2"
+msgstr "eSIM 2"
+
+msgid "Switch"
+msgstr "切换"
+
+msgid "Switching restarts the modem so it re-detects the selected SIM."
+msgstr "切换将重启 modem，以重新检测所选 SIM。"
+
+msgid "IMEI modification"
+msgstr "IMEI 修改"
+
+msgid "Current IMEI (NV)"
+msgstr "当前 IMEI (NV)"
+
+msgid "New IMEI"
+msgstr "新 IMEI"
+
+msgid "Write IMEI"
+msgstr "写入 IMEI"
+
+msgid "The IMEI is written to NV item 550 and persisted. Writing takes a few seconds."
+msgstr "IMEI 写入 NV 项 550 并持久化，写入需数秒。"
+
+msgid "Radio bands"
+msgstr "频段"
+
+msgid "Current band (QMI)"
+msgstr "当前频段 (QMI)"
+
+msgid "Current channel"
+msgstr "当前信道"
+
+msgid "Current bands (MM)"
+msgstr "当前频段 (MM)"
+
+msgid "Supported bands"
+msgstr "支持频段"
+
+msgid "Base station signaling"
+msgstr "基站信令"
+
+msgid "PLMN"
+msgstr "PLMN"
+
+msgid "Tracking area code"
+msgstr "跟踪区码 (TAC)"
+
+msgid "Global cell ID"
+msgstr "全球小区 ID"
+
+msgid "EARFCN"
+msgstr "EARFCN"
+
+msgid "LTE band"
+msgstr "LTE 频段"
+
+msgid "Serving cell ID"
+msgstr "服务小区 ID"
+
+msgid "Serving RSRP"
+msgstr "服务 RSRP"
+
+msgid "Serving RSRQ"
+msgstr "服务 RSRQ"
+
+msgid "Serving SNR"
+msgstr "服务 SNR"
+
+msgid "Cell"
+msgstr "小区"
+
+msgid "PCI"
+msgstr "PCI"
+
+msgid "RSRP"
+msgstr "RSRP"
+
+msgid "RSRQ"
+msgstr "RSRQ"
+
+msgid "RSSI"
+msgstr "RSSI"

@@ -1,0 +1,96 @@
+--- a/drivers/power/supply/pm8916_bms_vm.c	2026-11-22 18:32:11.242938219 +0800
++++ b/drivers/power/supply/pm8916_bms_vm.c	2026-11-22 18:33:14.915342079 +0800
+@@ -78,6 +78,7 @@
+ 	unsigned int vbat_now;
+ 	struct iio_channel *batt_therm;
+ 	int temp;
++	unsigned int charge_ir_mohm;
+ };
+ 
+ /*
+@@ -126,6 +127,55 @@
+ 	return bat->vbat_now;
+ }
+ 
++/*
++ * The pack has no current sense, so the only OCV estimate available while
++ * charging is the terminal voltage minus the charge-current lift:
++ *
++ *	vbat = OCV + (I_charge - I_load) * R_pack
++ *
++ * The load term is small on an idle stick and the charger can only report
++ * the programmed charge current, so that is what the correction uses.  The
++ * resistance comes from the device tree ("qcom,charge-ir-mohm") and should
++ * be calibrated on the target: measure vbat right after a charge starts and
++ * again once the current stops, then R = (vbat_charge - vbat_rest) / I.
++ */
++static int pm8916_bms_vm_charge_ocv(struct pm8916_bms_vm_battery *bat,
++				    struct power_supply *psy)
++{
++	union power_supply_propval cur = { 0 };
++	unsigned int drop, ocv = bat->vbat_now;
++
++	if (!bat->charge_ir_mohm)
++		return ocv;
++
++	if (power_supply_get_property_from_supplier(psy,
++			POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT, &cur))
++		return ocv;
++
++	drop = (bat->charge_ir_mohm * cur.intval) / 1000;
++	if (drop >= ocv)
++		return ocv;
++
++	return ocv - drop;
++}
++
++static bool pm8916_bms_vm_is_charging(struct power_supply *psy)
++{
++	union power_supply_propval online = { 0 }, enabled = { 0 };
++
++	if (power_supply_get_property_from_supplier(psy,
++			POWER_SUPPLY_PROP_ONLINE, &online))
++		return false;
++	if (!online.intval)
++		return false;
++
++	if (power_supply_get_property_from_supplier(psy,
++			POWER_SUPPLY_PROP_CHARGE_ENABLED, &enabled))
++		return true;
++
++	return enabled.intval != 0;
++}
++
+ static int pm8916_bms_vm_battery_get_property(struct power_supply *psy,
+ 					      enum power_supply_property psp,
+ 					      union power_supply_propval *val)
+@@ -171,9 +221,14 @@
+ 		if (!info->ocv_table[0])
+ 			return -ENODATA;
+ 
+-		val->intval = power_supply_batinfo_ocv2cap(info,
+-							   pm8916_bms_vm_get_ocv(bat),
+-							   bat->temp / 1000);
++		if (pm8916_bms_vm_is_charging(psy))
++			val->intval = power_supply_batinfo_ocv2cap(info,
++						pm8916_bms_vm_charge_ocv(bat, psy),
++						bat->temp / 1000);
++		else
++			val->intval = power_supply_batinfo_ocv2cap(info,
++						pm8916_bms_vm_get_ocv(bat),
++						bat->temp / 1000);
+ 		if (val->intval < 0)
+ 			return val->intval;
+ 
+@@ -312,6 +367,11 @@
+ 	if (ret < 0)
+ 		return -EINVAL;
+ 
++	ret = device_property_read_u32(dev, "qcom,charge-ir-mohm",
++				       &bat->charge_ir_mohm);
++	if (ret)
++		bat->charge_ir_mohm = 0;
++
+ 	ret = regmap_bulk_read(bat->regmap, bat->reg + PM8916_PERPH_TYPE, &tmp, 2);
+ 	if (ret)
+ 		goto comm_error;

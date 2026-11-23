@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/arch/arm64/boot/dts/qcom/msm8916-generic-mf32lt.dts
-@@ -0,0 +1,300 @@
+@@ -0,0 +1,314 @@
 +// SPDX-License-Identifier: GPL-2.0-only
 +/*
 + * MF32LT 4G modem stick (XinXun UFI MF32LT): MSM8916, 512 MB RAM, 4 GB eMMC,
@@ -97,6 +97,16 @@
 +		console-size = <0x00040000>;
 +		pmsg-size = <0x00040000>;
 +		ecc-size = <16>;
++	};
++
++	/* 16 MB CMA for the MSM DRM/GPU VRAM (adreno-306): without a CMA
++	 * region dma_alloc_coherent fails and msm_drm bind aborts with
++	 * "failed to allocate VRAM" / "__cma_alloc: alloc failed". */
++	linux_cma: linux,cma {
++		compatible = "shared-dma-pool";
++		size = <0x0 0x01000000>;
++		reusable;
++		linux,cma-default;
 +	};
 +};
 +
@@ -220,6 +230,10 @@
 +&pm8916_bms {
 +	monitored-battery = <&battery>;
 +	power-supplies = <&pm8916_charger>;
++
++	/* Pack IR (169 mOhm) so the VM-BMS can compensate the OCV estimate
++	 * for the charge-current lift while charging (873 patch). */
++	qcom,charge-ir-mohm = <169>;
 +
 +	io-channels = <&pm8916_vadc VADC_LR_MUX1_BAT_THERM>;
 +	io-channel-names = "batt-therm";

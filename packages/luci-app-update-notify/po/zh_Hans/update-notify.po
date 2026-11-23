@@ -1,0 +1,60 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Upgrade firmware"
+msgstr "升级固件"
+
+msgid "Dismiss"
+msgstr "关闭"
+
+msgid "Firmware upgrade complete: %s -> %s. Your settings were kept."
+msgstr "固件升级完成：%s -> %s。设置已保留。"
+
+msgid "Firmware upgrade complete. You are now running %s."
+msgstr "固件升级完成。当前版本：%s。"
+
+msgid "Firmware update available: %s -> %s"
+msgstr "有可用固件更新：%s -> %s"
+
+msgid "Last checked %s."
+msgstr "上次检查：%s。"
+
+msgid "This downloads the new firmware and reboots the device. Your settings are kept. The image checksum is verified before flashing. Continue?"
+msgstr "这将下载新固件并重启设备。设置将保留。刷写前会校验镜像校验和。是否继续？"
+
+msgid "Confirm firmware upgrade"
+msgstr "确认固件升级"
+
+msgid "Upgrading..."
+msgstr "正在升级..."
+
+msgid "Downloading firmware and verifying checksum..."
+msgstr "正在下载固件并校验校验和..."
+
+msgid "Checksum verified. Rebooting to apply..."
+msgstr "校验和已验证。正在重启以应用..."
+
+msgid "Download failed - check network and system log."
+msgstr "下载失败 - 请检查网络和系统日志。"
+
+msgid "Retry upgrade"
+msgstr "重试升级"
+
+msgid "1 package update is available."
+msgstr "有 1 个软件包更新可用。"
+
+msgid "%d package updates are available."
+msgstr "有 %d 个软件包更新可用。"
+
+msgid "Review and install"
+msgstr "查看并安装"
+
+msgid "A fix for your build is available: %s."
+msgstr "此构建有可用修复：%s。"
+
+msgid "%d fixes for your build are available."
+msgstr "此构建有 %d 个可用修复。"

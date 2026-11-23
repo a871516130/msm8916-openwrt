@@ -1,0 +1,135 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Firmware Upgrade"
+msgstr "固件升级"
+
+msgid "Check for a newer firmware image published for this board and install it."
+msgstr "检查此板卡发布的新固件镜像并安装。"
+
+msgid "Fixes for this build"
+msgstr "本构建的修复"
+
+msgid "Keep settings"
+msgstr "保留设置"
+
+msgid "Uncheck to erase all settings on upgrade (sysupgrade -n). This wipes the overlay and your configuration."
+msgstr "取消勾选可在升级时清除所有设置（sysupgrade -n）。这将清空 overlay 和您的配置。"
+
+msgid "Check again"
+msgstr "重新检查"
+
+msgid "Upgrade"
+msgstr "升级"
+
+msgid "Progress"
+msgstr "进度"
+
+msgid "Downloading %s of %s"
+msgstr "正在下载 %s / %s"
+
+msgid "Verifying the image checksum"
+msgstr "正在校验镜像校验和"
+
+msgid "Flashing — the device will reboot when this finishes"
+msgstr "正在写入 — 完成后设备将重启"
+
+msgid "Finished"
+msgstr "已完成"
+
+msgid "The upgrade failed. See the log below."
+msgstr "升级失败。请查看下方日志。"
+
+msgid "Could not read update information. Check the network connection and press \"Check again\"."
+msgstr "无法读取更新信息。请检查网络连接后点击\"重新检查\"。"
+
+msgid "manual flash required"
+msgstr "需要手动刷写"
+
+msgid "update available"
+msgstr "有可用更新"
+
+msgid "up to date"
+msgstr "已是最新"
+
+msgid "Current version"
+msgstr "当前版本"
+
+msgid "Latest version"
+msgstr "最新版本"
+
+msgid "Board"
+msgstr "板卡"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Image size"
+msgstr "镜像大小"
+
+msgid "Notes"
+msgstr "说明"
+
+msgid "No fixes pending for this build."
+msgstr "此构建没有待安装的修复。"
+
+msgid "Installed from the feed of this build. The affected services are restarted; the device does not reboot."
+msgstr "从此构建的软件源安装。受影响的服务将重启；设备不会重启。"
+
+msgid "Installing…"
+msgstr "正在安装…"
+
+msgid "Install fixes"
+msgstr "安装修复"
+
+msgid "Install %d fix(es) for this build?"
+msgstr "为此构建安装 %d 个修复？"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Install"
+msgstr "安装"
+
+msgid "Installing %s (%d of %d)"
+msgstr "正在安装 %s（第 %d / %d 个）"
+
+msgid "Installing %d fix(es)…"
+msgstr "正在安装 %d 个修复…"
+
+msgid "Installed"
+msgstr "已安装"
+
+msgid "Installing the fixes failed. See the system log."
+msgstr "安装修复失败。请查看系统日志。"
+
+msgid "Installed %d fix(es). The affected services were restarted."
+msgstr "已安装 %d 个修复。受影响的服务已重启。"
+
+msgid "Installing the fixes failed (exit %d). See the system log."
+msgstr "安装修复失败（退出码 %d）。请查看系统日志。"
+
+msgid "Download, verify and flash %s, ERASING all settings? The device will reboot to defaults."
+msgstr "下载、校验并刷写 %s，清除所有设置？设备将恢复出厂设置重启。"
+
+msgid "Download, verify and flash %s? The device will reboot and keep its settings."
+msgstr "下载、校验并刷写 %s？设备将重启并保留设置。"
+
+msgid "All settings will be erased, including Wi-Fi, Station Mode, network and modem configuration."
+msgstr "所有设置将被清除，包括 Wi-Fi、Station Mode、网络和调制解调器配置。"
+
+msgid "Starting…"
+msgstr "正在启动…"
+
+msgid "Upgrade started — downloading, verifying and flashing. The device will reboot to defaults."
+msgstr "升级已开始 — 正在下载、校验和写入。设备将恢复出厂设置重启。"
+
+msgid "Upgrade started — downloading, verifying and flashing. The device will reboot."
+msgstr "升级已开始 — 正在下载、校验和写入。设备将重启。"
+
+msgid "Could not start the upgrade. See the system log."
+msgstr "无法启动升级。请查看系统日志。"

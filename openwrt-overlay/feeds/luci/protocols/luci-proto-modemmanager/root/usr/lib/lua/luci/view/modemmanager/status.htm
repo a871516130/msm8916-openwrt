@@ -1,0 +1,158 @@
+<%+header%>
+<h2 name="content"><%:Cellular Modem%></h2>
+
+<style type="text/css">
+.mmm-page { font-size: 13px; }
+.mmm-page table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+.mmm-page th, .mmm-page td {
+    border: 1px solid rgba(128,128,128,.25);
+    padding: 5px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+.mmm-page th {
+    background: rgba(128,128,128,.10);
+    width: 34%;
+    color: #444;
+    font-weight: bold;
+}
+.mmm-page h3 { margin: 4px 0 6px; font-size: 14px; }
+.mmm-page code { font-family: monospace; font-size: 12px; }
+.mmm-page .err {
+    padding: 10px 14px;
+    border: 1px solid #c00;
+    border-radius: 6px;
+    background: rgba(200,0,0,.08);
+    color: #a00;
+}
+.mmm-bar {
+    display: block;
+    height: 16px;
+    border: 1px solid rgba(128,128,128,.4);
+    border-radius: 3px;
+    background: rgba(128,128,128,.08);
+    overflow: hidden;
+    max-width: 320px;
+}
+.mmm-bar > span { display: block; height: 100%; background: #2e7d32; }
+.mmm-bar.low > span { background: #ef6c00; }
+.mmm-bar.nosig > span { background: #c62828; }
+.mmm-sig-text { font-size: 11px; color: #666; margin-top: 2px; display: block; }
+</style>
+
+<%
+    local out = {}
+
+    local function esc(s)
+        return (tostring(s or ""))
+            :gsub("&", "&amp;")
+            :gsub("<", "&lt;")
+            :gsub(">", "&gt;")
+    end
+
+    local function T(s)
+        if not s or s == "" or s == "--" or s == "-" then return "--" end
+        return translate(s)
+    end
+
+    -- 整段页面在 Lua 里拼, 避免 nftmpl 跨行表达式
+    local function h3(t)  out[#out + 1] = "<h3>" .. esc(t) .. "</h3>" end
+    local function tbl() out[#out + 1] = "<table>" end
+    local function endtbl() out[#out + 1] = "</table>" end
+
+    -- label / value / mono(等宽) / custom_html(直接给 HTML)
+    local function row(label, val, mono, custom)
+        local vh
+        if custom then vh = custom
+        elseif mono then vh = "<code>" .. esc(T(val)) .. "</code>"
+        else vh = esc(T(val)) end
+        out[#out + 1] = "<tr><th>" .. esc(label) .. "</th><td>" .. vh
+            .. "</td></tr>"
+    end
+
+    if d.error then
+        out[#out + 1] = "<div class=\"err\">" .. esc(d.error) .. "</div>"
+    else
+        h3(translate("Modem"))
+        tbl()
+        row(translate("IMEI"), d.imei, true)
+        row(translate("Device identifier"), d.did, true)
+        row(translate("Manufacturer"), d.mfr)
+        row(translate("Model"), d.model)
+        row(translate("Revision"), d.rev)
+        row(translate("DBUS path"), d.dbus, true)
+        endtbl()
+
+        h3(translate("Status"))
+        tbl()
+        row(translate("Modem state"), d.state)
+        row(translate("Power state"), d.power)
+        row(translate("Failed reason"), d.state_reason)
+        row(translate("Carrier configuration"), d.carrier_cfg)
+        row(translate("Own numbers"), d.own_numbers)
+        endtbl()
+
+        h3(translate("Network registration"))
+        tbl()
+        row(translate("Operator"), d.operator)
+        row(translate("Operator code"), d.opcode, true)
+        row(translate("Registration state"), d.reg)
+        row(translate("Packet service state"), d.ps)
+        row(translate("Access technologies"), d.accesstech)
+        row(translate("APN"), d.apn, true)
+        row(translate("UE mode operation"), d.ue_mode)
+        row(translate("MiCo mode"), d.mico)
+        row(translate("DRX cycle"), d.drx)
+
+        local sig = tonumber(d.signal) or 0
+        if sig > 100 then sig = 100 end
+        local barcls = (sig <= 0 and "nosig") or ((sig < 50 and "low") or "")
+        local kind = (d.signal_recent == "yes") and translate("recent")
+            or translate("average")
+        row(translate("Signal quality"), nil, nil,
+            "<span class=\"mmm-bar " .. barcls .. "\">"
+            .. "<span style=\"width: " .. sig .. "%\"></span></span>"
+            .. "<span class=\"mmm-sig-text\">" .. sig .. "% (" .. kind .. ")</span>")
+        endtbl()
+
+        if d.reject and d.reject ~= "--" and d.reject ~= "" then
+            h3(translate("Network rejection"))
+            tbl()
+            row(translate("Rejection error"), d.reject)
+            row(translate("Rejected operator id"), d.reject_opid, true)
+            row(translate("Rejected operator name"), d.reject_opname)
+            row(translate("Rejected access technology"), d.reject_rat)
+            endtbl()
+        end
+
+        if d.serving_reg or d.band then
+            h3(translate("QMI radio layer"))
+            tbl()
+            if d.serving_reg then
+                row(translate("Serving registration state"), d.serving_reg)
+            end
+            if d.roaming then
+                row(translate("Roaming status"), d.roaming)
+            end
+            if d.plmn_mcc then
+                row(translate("Current PLMN"),
+                    (d.plmn_mcc or "") .. (d.plmn_mnc or ""), true)
+            end
+            if d.band then
+                row(translate("Active band class"), d.band, true)
+            end
+            if d.channel then
+                row(translate("Active channel"), d.channel, true)
+            end
+            endtbl()
+            out[#out + 1] = "<p><em>" .. esc(translate(
+                "QMI values may take several seconds (port contention with "
+                .. "ModemManager). Blank means the query did not complete."))
+                .. "</em></p>"
+        end
+    end
+
+    -- 此 nftmpl parser 不支持 <%- 前置连字符(raw 输出), 只能用语句块
+-- write() 是引擎对字面量文本生成的同一函数, 生产环境由 dispatcher 提供
+    write("<div class=\"mmm-page\">" .. table.concat(out) .. "</div>")
+-%>

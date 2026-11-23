@@ -1,0 +1,120 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Modem Watchdog"
+msgstr "调制解调器看门狗"
+
+msgid "Detects stalled LTE bearers and recovers the interface automatically. Changes take effect after saving and restarting the daemon."
+msgstr "检测停滞的 LTE 承载并自动恢复接口。保存并重启守护进程后更改生效。"
+
+msgid "Daemon status"
+msgstr "守护进程状态"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Stopped / not installed"
+msgstr "已停止 / 未安装"
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Service"
+msgstr "服务"
+
+msgid "Watchdog Behaviour"
+msgstr "看门狗行为"
+
+msgid "Enable watchdog"
+msgstr "启用看门狗"
+
+msgid "Turn the stall-detection watchdog on or off entirely."
+msgstr "完全开启或关闭停滞检测看门狗。"
+
+msgid "Auto mobile (detect movement)"
+msgstr "自动移动模式（检测移动）"
+
+msgid "Automatically switch to the 30s/5s handover-safe profile when the serving cell changes (the device is moving), and revert to the stationary profile after a period of stillness. Boots into the stationary profile, so a parked device is unaffected. ON by default."
+msgstr "当服务小区变化（设备在移动）时自动切换到 30s/5s 切换安全配置，静止一段时间后恢复静止配置。启动时使用静止配置，停放的设备不受影响。默认开启。"
+
+msgid "Mobile mode (force, manual)"
+msgstr "移动模式（强制，手动）"
+
+msgid "Force the 30s/5s stall-detection profile at all times (car, travel router) instead of auto-detecting movement. Only shown when Auto mobile is OFF; with Auto mobile ON this is unnecessary."
+msgstr "始终强制使用 30s/5s 停滞检测配置（车载、旅行路由器），而非自动检测移动。仅当自动移动关闭时显示；自动移动开启时无需此项。"
+
+msgid "Mobile grace (seconds)"
+msgstr "移动宽限期（秒）"
+
+msgid "Keep the mobile profile this long after the last detected cell change before reverting to stationary."
+msgstr "在最后一次检测到小区变化后保持移动配置的时长，之后恢复静止配置。"
+
+msgid "Cell poll (seconds)"
+msgstr "小区轮询间隔（秒）"
+
+msgid "How often the watchdog samples the serving cell over ModemManager D-Bus to detect movement. Read-only; never wedges the modem."
+msgstr "看门狗通过 ModemManager D-Bus 采样服务小区以检测移动的频率。只读；绝不会阻塞调制解调器。"
+
+msgid "Stall timeout (seconds)"
+msgstr "停滞超时（秒）"
+
+msgid "How long the bearer is quiet before the watchdog declares a stall. Range 30–600; the manual_override config can set values below 30 but the script will clamp to 30."
+msgstr "承载静默多长时间后看门狗判定为停滞。范围 30–600；manual_override 配置可设低于 30 的值，但脚本会限制为 30。"
+
+msgid "Check interval (seconds)"
+msgstr "检查间隔（秒）"
+
+msgid "How often the watchdog checks RX counters."
+msgstr "看门狗检查接收计数器的频率。"
+
+msgid "Recovery cooldown (seconds)"
+msgstr "恢复冷却时间（秒）"
+
+msgid "Minimum gap between consecutive recovery attempts, so a flaky tower cannot flap the interface back-to-back."
+msgstr "连续恢复尝试之间的最小间隔，防止不稳定的基站导致接口反复抖动。"
+
+msgid "Keepalive (normally off)"
+msgstr "保活（通常关闭）"
+
+msgid "DNS keepalive"
+msgstr "DNS 保活"
+
+msgid "Sends a tiny DNS query every few minutes while idle to keep the modem’s RRC layer in RRC_CONNECTED. Stock Android does NOT do this — leave disabled unless you have a specific network that drops silent bearers."
+msgstr "空闲时每隔几分钟发送一次微小 DNS 查询，使调制解调器的 RRC 层保持在 RRC_CONNECTED 状态。原厂 Android 不会这样做 — 除非您的网络会断开静默承载，否则请保持禁用。"
+
+msgid "Keepalive interval (seconds)"
+msgstr "保活间隔（秒）"
+
+msgid "Keepalive target"
+msgstr "保活目标"
+
+msgid "Hostname that get a DNS lookup each interval."
+msgstr "每个间隔进行 DNS 查询的主机名。"
+
+msgid "Recovery escalation"
+msgstr "恢复升级"
+
+msgid "Allow SSR restart (modem subsystem reset)"
+msgstr "允许 SSR 重启（调制解调器子系统重置）"
+
+msgid "Stage-3 ladder: restart the modem remoteproc. Android’s stock bam_dmux calls subsystem_restart(\"modem\") on the same A2 timeout sites, so this is parity. Disable ONLY if you want the modem state frozen for post-mortem analysis."
+msgstr "第三阶段：重启调制解调器 remoteproc。原厂 Android 的 bam_dmux 在相同的 A2 超时点调用 subsystem_restart(\"modem\")，因此这是对等行为。仅当您需要冻结调制解调器状态进行事后分析时才禁用。"
+
+msgid "Bearer-down redrive (seconds)"
+msgstr "承载断开重驱（秒）"
+
+msgid "A netifd \"down\" interface still down this long after a rebuild is stuck — the watchdog retriggers `ifup` and re-arms the proto."
+msgstr "netifd 接口在重建后仍处于 down 状态超过此时长即视为卡死 — 看门狗会重新触发 `ifup` 并重新启动协议。"
+
+msgid "Zombie-modem nudge (seconds)"
+msgstr "僵尸调制解调器轻推（秒）"
+
+msgid "After a modem crash the baseband can land in a low-power zombie state (no modem object, no registration). This many seconds without a modem object triggers one qmicli --dms-set-operating-mode=online poke. Set to 0 to disable."
+msgstr "调制解调器崩溃后，基带可能进入低功耗僵尸状态（无调制解调器对象、无注册）。在此秒数内无调制解调器对象将触发一次 qmicli --dms-set-operating-mode=online 轻推。设为 0 可禁用。"
+
+msgid "Watchdog restart requested; check status if anything looks wrong."
+msgstr "已请求重启看门狗；如有异常请检查状态。"

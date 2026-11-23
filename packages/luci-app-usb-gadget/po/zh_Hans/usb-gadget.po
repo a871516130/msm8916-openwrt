@@ -1,0 +1,177 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "USB Gadget Configuration"
+msgstr "USB Gadget 配置"
+
+msgid "Configure USB gadget functions. Changes take effect after saving and restarting the service."
+msgstr "配置 USB gadget 功能。保存并重启服务后更改生效。"
+
+msgid "Device Settings"
+msgstr "设备设置"
+
+msgid "Enable USB Gadget"
+msgstr "启用 USB Gadget"
+
+msgid "Disable to use USB port in host mode."
+msgstr "禁用以将 USB 端口用作主机模式。"
+
+msgid "Ensure alternative access."
+msgstr "确保备用访问方式。"
+
+msgid "Gadget Name"
+msgstr "Gadget 名称"
+
+msgid "Manufacturer"
+msgstr "制造商"
+
+msgid "Product"
+msgstr "产品"
+
+msgid "Vendor ID"
+msgstr "厂商 ID"
+
+msgid "Must be hex format: 0x1234"
+msgstr "必须为十六进制格式：0x1234"
+
+msgid "Product ID"
+msgstr "产品 ID"
+
+msgid "UDC Device"
+msgstr "UDC 设备"
+
+msgid "Auto-detect"
+msgstr "自动检测"
+
+msgid "RNDIS (Windows Ethernet)"
+msgstr "RNDIS（Windows 以太网）"
+
+msgid "Windows-compatible USB ethernet. Works on all Windows versions."
+msgstr "兼容 Windows 的 USB 以太网。适用于所有 Windows 版本。"
+
+msgid "Enable RNDIS"
+msgstr "启用 RNDIS"
+
+msgid "Plug-and-play on Windows. Automatically adds to LAN bridge."
+msgstr "Windows 即插即用。自动加入 LAN 桥接。"
+
+msgid "ECM (macOS/Linux Ethernet)"
+msgstr "ECM（macOS/Linux 以太网）"
+
+msgid "For macOS ≤10.14 and Linux. Do not enable with NCM."
+msgstr "适用于 macOS ≤10.14 和 Linux。请勿与 NCM 同时启用。"
+
+msgid "Enable ECM"
+msgstr "启用 ECM"
+
+msgid "CDC Ethernet for macOS and Linux. Disable RNDIS when using."
+msgstr "适用于 macOS 和 Linux 的 CDC 以太网。使用时请禁用 RNDIS。"
+
+msgid "NCM (Modern Ethernet)"
+msgstr "NCM（现代以太网）"
+
+msgid "Best performance. For Windows 11+, macOS ≥10.15, Linux."
+msgstr "最佳性能。适用于 Windows 11+、macOS ≥10.15、Linux。"
+
+msgid "Enable NCM"
+msgstr "启用 NCM"
+
+msgid "Modern high-speed USB ethernet. Best choice for new systems."
+msgstr "现代高速 USB 以太网。新系统的最佳选择。"
+
+msgid "ACM (Serial Console)"
+msgstr "ACM（串口控制台）"
+
+msgid "Provides /dev/ttyACM0 on host. Access: screen /dev/ttyACM0 115200"
+msgstr "在主机上提供 /dev/ttyACM0。访问：screen /dev/ttyACM0 115200"
+
+msgid "Enable Serial Console"
+msgstr "启用串口控制台"
+
+msgid "Enable Login Shell"
+msgstr "启用登录 Shell"
+
+msgid "Provide shell access. Disable for raw TTY."
+msgstr "提供 shell 访问。禁用以获得原始 TTY。"
+
+msgid "Connection Info"
+msgstr "连接信息"
+
+msgid "Mass Storage"
+msgstr "大容量存储"
+
+msgid "Expose storage image as USB drive. Does not provide access to the device."
+msgstr "将存储镜像暴露为 USB 驱动器。不提供对设备本身的访问。"
+
+msgid "Enable Mass Storage"
+msgstr "启用大容量存储"
+
+msgid "Image Path"
+msgstr "镜像路径"
+
+msgid "File will be created automatically if it doesn't exist."
+msgstr "如果文件不存在将自动创建。"
+
+msgid "Image Size"
+msgstr "镜像大小"
+
+msgid "Used when creating (e.g., 512M, 1G, 2G)"
+msgstr "创建时使用（例如 512M、1G、2G）"
+
+msgid "Read-Only"
+msgstr "只读"
+
+msgid "Mount as read-only on the host computer"
+msgstr "在主机计算机上以只读方式挂载"
+
+msgid "Configuration saved. Restarting USB Gadget service..."
+msgstr "配置已保存。正在重启 USB Gadget 服务..."
+
+msgid "USB Gadget service restarted successfully"
+msgstr "USB Gadget 服务重启成功"
+
+msgid "Gadget Status"
+msgstr "Gadget 状态"
+
+msgid "Active (Device Mode)"
+msgstr "活动（设备模式）"
+
+msgid "Disabled (Host Mode)"
+msgstr "已禁用（主机模式）"
+
+msgid "Enabled Functions"
+msgstr "已启用功能"
+
+msgid "None"
+msgstr "无"
+
+msgid "USB Controller"
+msgstr "USB 控制器"
+
+msgid "Network Interfaces"
+msgstr "网络接口"
+
+msgid "USB Gadget Status"
+msgstr "USB Gadget 状态"
+
+msgid "View current USB gadget configuration and status"
+msgstr "查看当前 USB gadget 配置和状态"
+
+msgid "Current Status"
+msgstr "当前状态"
+
+msgid "Restarting service..."
+msgstr "正在重启服务..."
+
+msgid "Please wait..."
+msgstr "请稍候..."
+
+msgid "Failed to restart: %s"
+msgstr "重启失败：%s"
+
+msgid "Restart Service"
+msgstr "重启服务"

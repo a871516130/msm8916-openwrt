@@ -36,6 +36,15 @@ CFG_UMS_IMAGE=""
 CFG_UMS_SIZE=""
 CFG_UMS_READONLY=""
 
+# Where usb-gadget-probe records the transport it picked for the host that is
+# attached right now.  Runtime state, so it does not survive a reboot.
+NETMODE_OVERRIDE="/var/run/usb-gadget/net_mode"
+
+# The serial shell runs from here, not from inittab.  See acm_console_start.
+# The shell gets no pidfile of its own: it is in its own session, so the tty it
+# holds is the only reliable handle on it.
+ACM_CONSOLE_PIDFILE="/var/run/usb-gadget/acm-console.pid"
+
 load_config() {
     config_load usbgadget
     
@@ -72,6 +81,60 @@ load_config() {
     config_get CFG_UMS_IMAGE ums image_path "/var/lib/usb-gadget/storage.img"
     config_get CFG_UMS_SIZE ums image_size "512M"
     config_get_bool CFG_UMS_READONLY ums readonly 0
+
+    # Which ethernet function to expose.  Unset means the per-function
+    # booleans stand, which is what a unit that predates this option gets --
+    # so an upgrade never changes the transport under a user.
+    #
+    #   auto   NCM, and RNDIS only if the host does not bind NCM (see the
+    #          probe); NCM is the better transport everywhere it is supported
+    #   ncm    NCM only
+    #   rndis  RNDIS only -- Windows before 11, and Android hosts
+    #   both   both at once: two adapters on the same subnet on any host that
+    #          binds both, kept as an escape hatch, not a default
+    config_get CFG_NET_MODE usb net_mode ""
+
+    case "$CFG_NET_MODE" in
+        "")
+            ;;
+        auto|ncm)
+            CFG_NCM=1
+            CFG_RNDIS=0
+            ;;
+        rndis)
+            CFG_NCM=0
+            CFG_RNDIS=1
+            ;;
+        both)
+            CFG_NCM=1
+            CFG_RNDIS=1
+            ;;
+        *)
+            log "usbgadget.usb.net_mode '$CFG_NET_MODE' is not auto, ncm, rndis or both; keeping the per-function settings"
+            CFG_NET_MODE=""
+            ;;
+    esac
+
+    # A decision made by usb-gadget-probe for the host attached right now.
+    # Only consulted in auto mode: an operator who pinned ncm or rndis must
+    # never be overridden by a decision left behind for a different host.
+    CFG_NETMODE_DECIDED=""
+    if [ "$CFG_NET_MODE" = "auto" ] && [ -r "$NETMODE_OVERRIDE" ]; then
+        CFG_NETMODE_DECIDED="$(cat "$NETMODE_OVERRIDE" 2>/dev/null)"
+        case "$CFG_NETMODE_DECIDED" in
+            ncm)
+                CFG_NCM=1
+                CFG_RNDIS=0
+                ;;
+            rndis)
+                CFG_NCM=0
+                CFG_RNDIS=1
+                ;;
+            *)
+                CFG_NETMODE_DECIDED=""
+                ;;
+        esac
+    fi
 }
 
 # ============================================================================
@@ -92,12 +155,38 @@ error() {
 # Utilities
 # ============================================================================
 
+# Stable identity for this unit.  The host keys the device -- and every MAC
+# derived from this -- on the serial, so a value that changes between boots
+# makes Windows treat each plug as new hardware: the adapter walks up
+# Ethernet 3 -> 4 -> 5 and the "set up a network" prompt returns every time.
+# The old fallback was "$(date +%s)-$$", which is exactly that failure.
+#
+# Order: a machine-id the image or the user provided, then the eMMC CID (unique
+# per part, survives any filesystem change), then one generated once and kept.
 get_serial_number() {
-    if [ -f /etc/machine-id ]; then
-        sha256sum < /etc/machine-id 2>/dev/null | cut -d' ' -f1 | cut -c1-16
-        return
+    local id=""
+
+    if [ -s /etc/machine-id ]; then
+        id="$(cat /etc/machine-id 2>/dev/null)"
     fi
-    echo "$(date +%s)-$(( $$ + 1000 ))"
+
+    if [ -z "$id" ] && [ -r /sys/block/mmcblk0/device/cid ]; then
+        id="$(cat /sys/block/mmcblk0/device/cid 2>/dev/null)"
+    fi
+
+    if [ -z "$id" ]; then
+        if [ ! -s /etc/machine-id ]; then
+            cat /proc/sys/kernel/random/uuid > /etc/machine-id 2>/dev/null || true
+        fi
+        id="$(cat /etc/machine-id 2>/dev/null)"
+    fi
+
+    # Nothing persistent is available (no machine-id, no eMMC CID, /etc not
+    # writable).  A per-boot value is wrong but a shared one is worse: two
+    # units on the same desk must never present the same serial and MACs.
+    [ -n "$id" ] || id="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "$$-$(date +%s)")"
+
+    printf '%s' "$id" | sha256sum | cut -d' ' -f1 | cut -c1-16
 }
 
 generate_mac() {
@@ -161,6 +250,19 @@ setup_rndis() {
     sysfs_write "${CFG_GADGET_PATH}/os_desc/qw_sign" "MSFT100"
     sysfs_write "${func}/os_desc/interface.rndis/compatible_id" "RNDIS"
     sysfs_write "${func}/os_desc/interface.rndis/sub_compatible_id" "5162001"
+
+    # Interface association: class EF, subclass 04, protocol 01 -- Microsoft's
+    # RNDIS IAD.  Windows then matches USB\Class_ef&SubClass_04&Prot_01 with
+    # the inbox rndiscmp.inf and needs no WCID negotiation at all (measured on
+    # a Windows 10 LTSC host, #102).
+    #
+    # These three are parsed as at most TWO hex digits: "0xef" stores 0 and
+    # "239" stores 0x23, so the association silently becomes 00/00/00 and the
+    # host stops claiming the interface.  Only these spellings are correct.
+    sysfs_write "${func}/class"    "ef"
+    sysfs_write "${func}/subclass" "04"
+    sysfs_write "${func}/protocol" "01"
+
     ln -sf "${CFG_CONFIG_PATH}" "${CFG_GADGET_PATH}/os_desc/"
     
     echo "+RNDIS"
@@ -197,19 +299,115 @@ setup_acm() {
     mkdir -p "$func"
     ln -sf "$func" "${CFG_CONFIG_PATH}/"
     
-    # Manage shell in inittab
     if [ "$CFG_ACM_SHELL" = "1" ]; then
-        log "Enabling serial shell on ttyGS0"
-        sed -i '/ttyGS0/d' /etc/inittab
-        echo "ttyGS0::askfirst:/usr/libexec/login.sh" >> /etc/inittab
+        log "Serial shell on ttyGS0 enabled (started once the UDC is bound)"
     else
-        log "ACM in raw TTY mode (removing shell from inittab)"
-        sed -i '/ttyGS0/d' /etc/inittab
+        log "ACM in raw TTY mode (no shell)"
     fi
     
-    kill -HUP 1 2>/dev/null || true
-    
     echo "+ACM"
+}
+
+# --- serial console ---------------------------------------------------------
+#
+# inittab cannot do this job on OpenWrt.  PID 1 is procd, not busybox init:
+# procd parses /etc/inittab once, in its INIT state, which runs before rcS
+# starts this script, and its askfirst handler drops an entry whose device
+# does not exist yet (inittab.c, askfirst -> dev_exist).  procd does re-run the
+# entries it already holds when a ttyGS* node appears (procd/files/hotplug.json
+# has a start-console rule for exactly that), which is why an entry present at
+# boot works -- and why appending one here never could: kill -HUP 1 is SIG_IGN
+# in procd (signal.c), so the line was written and then ignored (#131).
+#
+# So supervise the shell here, the way msm89xx/recovery/irfs/init does: wait
+# for the node, run the shell with a controlling tty so ^C and job control
+# work, and reopen it when the host disconnects or the gadget is rebuilt.
+acm_console_stop() {
+    local pid
+    if [ -f "$ACM_CONSOLE_PIDFILE" ]; then
+        pid="$(cat "$ACM_CONSOLE_PIDFILE" 2>/dev/null)"
+        if [ -n "$pid" ]; then
+            kill "$pid" 2>/dev/null || true
+            # A shell started from a process that ignores SIGTERM inherits the
+            # ignored disposition, so escalate rather than leak it.
+            if kill -0 "$pid" 2>/dev/null; then
+                sleep 1
+                kill -KILL "$pid" 2>/dev/null || true
+            fi
+        fi
+        rm -f "$ACM_CONSOLE_PIDFILE"
+    fi
+    # The shell is a session of its own, so the supervisor's pid is no handle
+    # on it: clear the tty by its controlling terminal.
+    acm_console_reap
+    return 0
+}
+
+acm_console_running() {
+    local pid
+    pid="$(cat "$ACM_CONSOLE_PIDFILE" 2>/dev/null)"
+    [ -n "$pid" ] || return 1
+    kill -0 "$pid" 2>/dev/null
+}
+
+# Two logins on one tty interleave their prompts and the console looks broken,
+# which is what a stale holder produces -- on the first boot after an upgrade
+# procd can still hold the old inittab action, and a hand-started shell from
+# before this script ran is just as bad.  Clear the tty before taking it.
+#
+# Matched on the controlling terminal in /proc/PID/stat rather than on open
+# file descriptors: a login always sets one, and walking every fd with
+# readlink costs seconds of fork/exec on this SoC.
+acm_console_reap() {
+    local major minor tty_nr line pid rest
+    # /sys/class/tty/ttyGS0/dev is "major:minor"; the kernel encodes the same
+    # pair in stat's tty_nr field as (major << 8) | minor, with the high bits
+    # of a minor above 255 moved up by 12.
+    [ -r /sys/class/tty/ttyGS0/dev ] || return 0
+    IFS=: read -r major minor < /sys/class/tty/ttyGS0/dev || return 0
+    [ -n "$major" ] || return 0
+    [ -n "$minor" ] || return 0
+    tty_nr=$(( (major << 8) | (minor & 0xff) | ((minor & ~0xff) << 12) ))
+    cat /proc/[0-9]*/stat 2>/dev/null | while IFS= read -r line; do
+        pid=${line%% *}
+        rest=${line##*) }
+        set -- $rest
+        [ "$5" = "$tty_nr" ] || continue
+        if [ "$pid" != "$$" ]; then
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+    return 0
+}
+
+acm_console_start() {
+    acm_console_stop
+    acm_console_reap
+    mkdir -p "$(dirname "$ACM_CONSOLE_PIDFILE")"
+    (
+        # The shell exits non-zero whenever the host hangs up, so this loop
+        # must not inherit set -e from the script.  HUP is ignored because a
+        # manual `usb-gadget restart` over ssh would otherwise take the
+        # console down with the session.
+        trap '' HUP
+        set +e
+        while :; do
+            if [ -c /dev/ttyGS0 ]; then
+                # login.sh, not a bare shell: it keeps the ttylogin policy and
+                # the root password check the inittab entry had.
+                #
+                # In a subshell of its own: ash does not restore the loop's
+                # stdio after this redirection, and a loop holding the tty is
+                # what made the console echo its own banner back as input.
+                (
+                    exec </dev/ttyGS0 >/dev/ttyGS0 2>&1
+                    exec setsid -c /usr/libexec/login.sh
+                )
+            fi
+            sleep 1
+        done
+    ) </dev/null >/dev/null 2>&1 &
+    echo $! > "$ACM_CONSOLE_PIDFILE"
 }
 
 setup_ums() {
@@ -240,19 +438,39 @@ setup_ums() {
 
 bring_up_iface() {
     local ifname_file="$1"
-    [ -f "$ifname_file" ] || return
+    [ -f "$ifname_file" ] || return 0
     local iface="$(cat "$ifname_file")"
-    [ -n "$iface" ] || return
+    [ -n "$iface" ] || return 0
     ip link set "$iface" up 2>/dev/null || ifconfig "$iface" up 2>/dev/null || true
+    return 0
+}
+
+# Attach $1 to the kernel bridge.  Never fails: a caller under `set -e` must
+# not be able to abort a rebuild that has already produced a working gadget.
+# A missing bridge is not an error here -- on a cold boot netifd has not built
+# it yet -- but a bridge that exists and still refuses the port is logged,
+# because the old `|| true` made that the one failure nobody could see.
+bridge_attach() {
+    local iface="$1"
+    if [ -z "$iface" ]; then return 0; fi
+    if [ ! -d "/sys/class/net/$iface" ]; then return 0; fi
+    if [ -d "/sys/class/net/br-lan/brif/$iface" ]; then return 0; fi
+    if [ ! -d /sys/class/net/br-lan ]; then return 0; fi
+
+    ip link set "$iface" master br-lan 2>/dev/null || brctl addif br-lan "$iface" 2>/dev/null || true
+
+    if [ -d "/sys/class/net/br-lan/brif/$iface" ]; then return 0; fi
+    log "could not attach $iface to br-lan"
+    return 0
 }
 
 add_to_bridge() {
     local ifname_file="$1"
     
-    [ -f "$ifname_file" ] || return
+    [ -f "$ifname_file" ] || return 0
     
     local iface="$(cat "$ifname_file")"
-    [ -n "$iface" ] || return
+    [ -n "$iface" ] || return 0
     log "Adding $iface to bridge"
     
     # Ensure interface is administrative UP so carrier is signalled to host
@@ -263,33 +481,87 @@ add_to_bridge() {
         dev_sec="$s"
         break
     done
-    [ -z "$dev_sec" ] && dev_sec="@device[0]"
+    if [ -z "$dev_sec" ]; then dev_sec="@device[0]"; fi
 
     # Add the interface to bridge
     uci -q del_list "network.${dev_sec}.ports=$iface" 2>/dev/null || true
     uci add_list "network.${dev_sec}.ports=$iface"
 
-    # Immediately attach to kernel bridge
-    ip link set "$iface" master br-lan 2>/dev/null || brctl addif br-lan "$iface" 2>/dev/null || true
+    # netifd runs at S20 and this gadget at S99, and usb0 is the bridge's only
+    # port -- so when netifd builds br-lan the port list is empty, and it does
+    # not mark a bridge with no present members as present at all
+    # (bridge.c: n_present == 0 -> device_set_present(false)).  br-lan then
+    # never exists, and the symptom is not "usb0 is missing from the LAN" but
+    # "the LAN has no device": no DHCP to the host, and none to Wi-Fi either.
+    # bridge_empty keeps the bridge present with no members, so the port list
+    # below lands on a bridge that exists and a later port is just added.
+    # A no-op on boards that already set it.
+    uci -q set "network.${dev_sec}.bridge_empty=1" 2>/dev/null || true
+
+    # Often too early on a cold boot; ensure_bridge retries after the reload.
+    bridge_attach "$iface"
+    return 0
+}
+
+# After netifd has re-read the config, make sure the bridge really is there
+# and really carries the gadget interfaces.  Without this the reload could
+# leave the LAN down and nothing would ever try again.
+ensure_bridge() {
+    local i=0
+    while [ "$i" -lt 5 ]; do
+        if [ -d /sys/class/net/br-lan ]; then break; fi
+        i=$((i + 1))
+        ubus call network.interface.lan up 2>/dev/null || ifup lan 2>/dev/null || true
+        sleep 1
+    done
+
+    if [ ! -d /sys/class/net/br-lan ]; then
+        log "br-lan does not exist; the LAN interface has no device"
+        return 0
+    fi
+
+    local f
+    if [ "$CFG_RNDIS" = "1" ]; then
+        f="${CFG_FUNCTIONS_PATH}/rndis.usb0/ifname"
+        bridge_attach "$(cat "$f" 2>/dev/null)"
+    fi
+    if [ "$CFG_ECM" = "1" ]; then
+        f="${CFG_FUNCTIONS_PATH}/ecm.usb0/ifname"
+        bridge_attach "$(cat "$f" 2>/dev/null)"
+    fi
+    if [ "$CFG_NCM" = "1" ]; then
+        f="${CFG_FUNCTIONS_PATH}/ncm.usb0/ifname"
+        bridge_attach "$(cat "$f" 2>/dev/null)"
+    fi
+    return 0
 }
 
 setup_network() {
     sleep 1
-    
-    [ "$CFG_RNDIS" = "1" ] && add_to_bridge "${CFG_FUNCTIONS_PATH}/rndis.usb0/ifname"
-    [ "$CFG_ECM" = "1" ] && add_to_bridge "${CFG_FUNCTIONS_PATH}/ecm.usb0/ifname"
-    [ "$CFG_NCM" = "1" ] && add_to_bridge "${CFG_FUNCTIONS_PATH}/ncm.usb0/ifname"
+
+    # Plain `if`s, not `cond && cmd`: the script runs under `set -e`, and a
+    # trailing `[ ... ] && cmd` whose test fails makes the whole script exit
+    # with 1.  That is every RNDIS build, where CFG_NCM is 0 -- the rebuild
+    # worked but `usb-gadget restart` reported failure.
+    if [ "$CFG_RNDIS" = "1" ]; then add_to_bridge "${CFG_FUNCTIONS_PATH}/rndis.usb0/ifname"; fi
+    if [ "$CFG_ECM" = "1" ]; then add_to_bridge "${CFG_FUNCTIONS_PATH}/ecm.usb0/ifname"; fi
+    if [ "$CFG_NCM" = "1" ]; then add_to_bridge "${CFG_FUNCTIONS_PATH}/ncm.usb0/ifname"; fi
     
     uci commit network
     /etc/init.d/network reload
+
+    # Before dnsmasq: it cannot bind br-lan while the device is missing.
+    ensure_bridge
+
     /etc/init.d/dnsmasq restart 2>/dev/null || true
     /etc/init.d/odhcpd restart 2>/dev/null || true
     /etc/init.d/firewall reload 2>/dev/null || true
 
     # Post-reload bringup check
-    [ "$CFG_RNDIS" = "1" ] && bring_up_iface "${CFG_FUNCTIONS_PATH}/rndis.usb0/ifname"
-    [ "$CFG_ECM" = "1" ] && bring_up_iface "${CFG_FUNCTIONS_PATH}/ecm.usb0/ifname"
-    [ "$CFG_NCM" = "1" ] && bring_up_iface "${CFG_FUNCTIONS_PATH}/ncm.usb0/ifname"
+    if [ "$CFG_RNDIS" = "1" ]; then bring_up_iface "${CFG_FUNCTIONS_PATH}/rndis.usb0/ifname"; fi
+    if [ "$CFG_ECM" = "1" ]; then bring_up_iface "${CFG_FUNCTIONS_PATH}/ecm.usb0/ifname"; fi
+    if [ "$CFG_NCM" = "1" ]; then bring_up_iface "${CFG_FUNCTIONS_PATH}/ncm.usb0/ifname"; fi
+    return 0
 }
 
 # ============================================================================
@@ -399,6 +671,11 @@ setup_gadget() {
     log "Enabling UDC: $udc"
     sysfs_write UDC "$udc"
     
+    # /dev/ttyGS0 exists only now, so the console cannot be started earlier.
+    if [ "$CFG_ACM" = "1" ] && [ "$CFG_ACM_SHELL" = "1" ]; then
+        acm_console_start
+    fi
+    
     # Configure network
     setup_network
     
@@ -407,6 +684,10 @@ setup_gadget() {
 
 teardown_gadget() {
     log "Tearing down USB gadget"
+    
+    # Before the gadget goes: stop the console while its tty still exists, so
+    # the shell is killed rather than left holding a dead device.
+    acm_console_stop
     
     # Load config to get paths
     load_config
@@ -452,9 +733,10 @@ teardown_gadget() {
     cd /sys/kernel/config/usb_gadget
     rmdir "$CFG_GADGET_NAME" 2>/dev/null || true
     
-    # Clean shell from inittab
-    sed -i '/ttyGS0/d' /etc/inittab
-    kill -HUP 1 2>/dev/null || true
+    # Drop a line an older version of this script appended.  procd holds the
+    # parsed action until the next boot, so this is not instant, but it keeps
+    # the file from feeding a second login on the next one.
+    sed -i '/^ttyGS0:/d' /etc/inittab
     
     log "Teardown complete"
     log "USB port available for host mode"
@@ -462,6 +744,12 @@ teardown_gadget() {
 
 status() {
     load_config
+
+    echo "Network mode: ${CFG_NET_MODE:-legacy} (ncm=$CFG_NCM rndis=$CFG_RNDIS ecm=$CFG_ECM)"
+    if [ -n "$CFG_NETMODE_DECIDED" ]; then
+        echo "Probe decision: $CFG_NETMODE_DECIDED (for the host attached now)"
+    fi
+    echo "Serial: $(get_serial_number)"
     
     # Check if globally disabled
     if [ "$CFG_ENABLED" != "1" ]; then
@@ -486,7 +774,11 @@ status() {
             echo "Serial console:"
             if [ -c /dev/ttyGS0 ]; then
                 if [ "$CFG_ACM_SHELL" = "1" ]; then
-                    echo "  /dev/ttyGS0 - Available (with shell)"
+                    if acm_console_running; then
+                        echo "  /dev/ttyGS0 - Available (with shell)"
+                    else
+                        echo "  /dev/ttyGS0 - Available (shell NOT running)"
+                    fi
                 else
                     echo "  /dev/ttyGS0 - Available (raw TTY)"
                 fi

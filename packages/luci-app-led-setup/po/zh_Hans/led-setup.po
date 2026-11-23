@@ -1,0 +1,120 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "LED Setup"
+msgstr "LED 设置"
+
+msgid "This is the configuration in effect now. If a unit has its Wi-Fi and LTE lamps swapped, point the roles at the correct labels; \"auto\" follows the board default, shown next to it. \"Blink\" lights the selected lamp for three seconds so you can see which one it is. Leave everything as it is and nothing changes."
+msgstr "这是当前生效的配置。如果设备的 Wi-Fi 和 LTE 指示灯互换了，请将角色指向正确的标签；\"auto\" 跟随板卡默认值（显示在旁边）。\"Blink\" 会点亮所选指示灯三秒，方便您确认是哪一个。保持原样则不会有任何变化。"
+
+msgid "Role"
+msgstr "角色"
+
+msgid "Lamp"
+msgstr "指示灯"
+
+msgid "Reset lamps to auto"
+msgstr "重置指示灯为自动"
+
+msgid "Save & apply"
+msgstr "保存并应用"
+
+msgid "Patterns"
+msgstr "闪烁模式"
+
+msgid "Pick a pattern for each scenario. \"default\" keeps the built-in timing shown next to it; pick a preset to pin it, or \"custom…\" to type your own blink:ON_MS:OFF_MS."
+msgstr "为每个场景选择模式。\"default\" 保持旁边显示的内置时序；选择预设可固定，或选\"自定义…\"输入自己的 blink:ON_MS:OFF_MS。"
+
+msgid "Scenario"
+msgstr "场景"
+
+msgid "Pattern"
+msgstr "模式"
+
+msgid "Wi-Fi status lamp"
+msgstr "Wi-Fi 状态灯"
+
+msgid "Wi-Fi fault (red half)"
+msgstr "Wi-Fi 故障（红色半区）"
+
+msgid "LTE / WAN signal lamp"
+msgstr "LTE / WAN 信号灯"
+
+msgid "Modem fault (red)"
+msgstr "调制解调器故障（红色）"
+
+msgid "Data activity (blue)"
+msgstr "数据活动（蓝色）"
+
+msgid "Battery charge (green)"
+msgstr "电池充电（绿色）"
+
+msgid "Battery fault (red)"
+msgstr "电池故障（红色）"
+
+msgid "auto (board default: %s)"
+msgstr "自动（板卡默认：%s）"
+
+msgid "auto (board default)"
+msgstr "自动（板卡默认）"
+
+msgid "%s (not present)"
+msgstr "%s（不存在）"
+
+msgid "Pick a lamp for this role first."
+msgstr "请先为此角色选择一个指示灯。"
+
+msgid "Blink"
+msgstr "闪烁"
+
+msgid "off"
+msgstr "关闭"
+
+msgid "on (steady)"
+msgstr "常亮"
+
+msgid "blink fast (100 / 100 ms)"
+msgstr "快速闪烁（100 / 100 毫秒）"
+
+msgid "blink rapid (150 / 150 ms)"
+msgstr "急促闪烁（150 / 150 毫秒）"
+
+msgid "blink (250 / 250 ms)"
+msgstr "闪烁（250 / 250 毫秒）"
+
+msgid "blink slow (500 / 500 ms)"
+msgstr "慢速闪烁（500 / 500 毫秒）"
+
+msgid "blink very slow (1 / 1 s)"
+msgstr "极慢闪烁（1 / 1 秒）"
+
+msgid "beacon (0.5 s every 10 s)"
+msgstr "信标（每 10 秒亮 0.5 秒）"
+
+msgid "default (%s)"
+msgstr "默认（%s）"
+
+msgid "default"
+msgstr "默认"
+
+msgid "%s (custom)"
+msgstr "%s（自定义）"
+
+msgid "custom…"
+msgstr "自定义…"
+
+msgid "Pattern for %s must be off, on or blink:ON_MS:OFF_MS."
+msgstr "%s 的模式必须为 off、on 或 blink:开:关（毫秒）。"
+
+msgid "LED mapping saved and the monitors restarted."
+msgstr "LED 映射已保存，监视器已重启。"
+
+msgid "Saving failed: "
+msgstr "保存失败："
+
+msgid "Every role lamp reset to auto."
+msgstr "所有角色指示灯已重置为自动。"

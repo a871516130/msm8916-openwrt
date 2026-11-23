@@ -1,0 +1,349 @@
+<%+header%>
+<h2 name="content"><%:Cellular Network%></h2>
+
+<style type="text/css">
+.mmm-page { font-size: 13px; }
+.mmm-page table { border-collapse: collapse; width: 100%; margin-bottom: 16px; }
+.mmm-page th, .mmm-page td {
+    border: 1px solid rgba(128,128,128,.25);
+    padding: 5px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+.mmm-page th {
+    background: rgba(128,128,128,.10);
+    width: 34%;
+    color: #444;
+    font-weight: bold;
+}
+.mmm-page h3 { margin: 4px 0 6px; font-size: 14px; }
+.mmm-page code { font-family: monospace; font-size: 12px; }
+.mmm-page .err {
+    padding: 10px 14px;
+    border: 1px solid #c00;
+    border-radius: 6px;
+    background: rgba(200,0,0,.08);
+    color: #a00;
+}
+.mmm-page .ok {
+    padding: 10px 14px;
+    border: 1px solid #2e7d32;
+    border-radius: 6px;
+    background: rgba(46,125,50,.08);
+    color: #2e7d32;
+}
+.mmm-page .warn {
+    padding: 10px 14px;
+    border: 1px solid #ef6c00;
+    border-radius: 6px;
+    background: rgba(239,108,0,.10);
+    color: #b25000;
+}
+.mmm-page form { margin: 0 0 16px 0; }
+.mmm-page form .row {
+    display: flex; align-items: center; gap: 10px; margin: 6px 0;
+    flex-wrap: wrap;
+}
+.mmm-page form label { min-width: 120px; }
+.mmm-page form input[type="text"], .mmm-page form select {
+    padding: 4px 8px; border: 1px solid rgba(128,128,128,.4);
+    border-radius: 3px; background: #fff; color: #333;
+}
+.mmm-page .btn {
+    padding: 5px 14px; border: 1px solid rgba(128,128,128,.4);
+    border-radius: 3px; background: rgba(128,128,128,.12);
+    cursor: pointer; font-size: 12px;
+}
+.mmm-page .btn.primary { background: #2e7d32; color: #fff; border-color: #2e7d32; }
+.mmm-page .hint { font-size: 11px; color: #666; margin-top: 4px; display: block; }
+.mmm-bar {
+    display: block; height: 16px; border: 1px solid rgba(128,128,128,.4);
+    border-radius: 3px; background: rgba(128,128,128,.08); overflow: hidden;
+    max-width: 320px;
+}
+.mmm-bar > span { display: block; height: 100%; background: #2e7d32; }
+.mmm-bar.low > span { background: #ef6c00; }
+.mmm-bar.nosig > span { background: #c62828; }
+.mmm-sig-text { font-size: 11px; color: #666; margin-top: 2px; display: block; }
+</style>
+
+<%
+    local out = {}
+    local function esc(s)
+        return (tostring(s or ""))
+            :gsub("&", "&amp;")
+            :gsub("<", "&lt;")
+            :gsub(">", "&gt;")
+    end
+    local function T(s)
+        if not s or s == "" or s == "--" or s == "-" then return "--" end
+        return translate(s)
+    end
+    local function h3(t) out[#out + 1] = "<h3>" .. esc(t) .. "</h3>" end
+    local function tbl() out[#out + 1] = "<table>" end
+    local function endtbl() out[#out + 1] = "</table>" end
+    local function row(label, val, mono, custom)
+        local vh
+        if custom then vh = custom
+        elseif mono then vh = "<code>" .. esc(T(val)) .. "</code>"
+        else vh = esc(T(val)) end
+        out[#out + 1] = "<tr><th>" .. esc(label) .. "</th><td>" .. vh
+            .. "</td></tr>"
+    end
+
+    -- 操作结果提示
+    if d.msg and #d.msg > 0 then
+        local is_err = d.msg:find("失败", 1, true) or d.msg:find("error", 1, true)
+            or d.msg:find("failed", 1, true)
+        local cls = is_err and "err" or "ok"
+        out[#out + 1] = "<div class=\"" .. cls .. "\">" .. esc(d.msg)
+            .. "</div>"
+    end
+
+    if d.error then
+        out[#out + 1] = "<div class=\"err\">" .. esc(d.error) .. "</div>"
+    else
+        if d.warning then
+            out[#out + 1] = "<div class=\"warn\">" .. esc(d.warning) .. "</div>"
+        end
+        if d.nosim then
+            out[#out + 1] = "<div class=\"warn\">"
+                .. esc(translate("No SIM card (physical SIM / eSIM) detected; "
+                    .. "registration and base-station data were skipped."))
+                .. "</div>"
+        end
+        h3(translate("Modem"))
+        tbl()
+        row(translate("IMEI"), d.imei, true)
+        row(translate("Device identifier"), d.did, true)
+        row(translate("Manufacturer"), d.mfr)
+        row(translate("Model"), d.model)
+        row(translate("Revision"), d.rev)
+        row(translate("DBUS path"), d.dbus, true)
+        endtbl()
+
+        h3(translate("Status"))
+        tbl()
+        row(translate("Modem state"), d.state)
+        row(translate("Power state"), d.power)
+        -- 失败原因：合并 state-failed-reason 与网络拒绝信息（用户要求显示全部）
+        local fr = d.state_reason or "--"
+        if d.reject and d.reject ~= "--" and d.reject ~= "" then
+            local rp = { "网络拒绝: " .. d.reject }
+            if d.reject_opid and d.reject_opid ~= "--" and d.reject_opid ~= "" then
+                rp[#rp + 1] = "opid " .. d.reject_opid
+            end
+            if d.reject_opname and d.reject_opname ~= "--" and d.reject_opname ~= "" then
+                rp[#rp + 1] = d.reject_opname
+            end
+            if d.reject_rat and d.reject_rat ~= "--" and d.reject_rat ~= "" then
+                rp[#rp + 1] = d.reject_rat
+            end
+            fr = (fr ~= "--" and (fr .. " / ") or "") .. table.concat(rp, " / ")
+        end
+        row(translate("Failed reason"), fr)
+        -- 运营商配置(APN)：值即下拉（默认 default/auto），onchange 自动提交
+        do
+            local cur_carrier = d.force_carrier or "auto"
+            out[#out + 1] = "<tr><th>" .. esc(translate("Carrier configuration")) .. "</th><td>"
+                .. "<form method=\"post\" action=\"\" style=\"display:inline\">"
+                .. "<input type=\"hidden\" name=\"act\" value=\"setcarrier\" />"
+                .. "<select name=\"carrier\" onchange=\"this.form.submit()\">"
+            for _, opt in ipairs({ { "auto", "default (auto)" },
+                                   { "46000", "China Mobile" },
+                                   { "46006", "China Unicom" },
+                                   { "46011", "China Telecom" } }) do
+                local sel = (cur_carrier == opt[1]) and " selected=\"selected\"" or ""
+                out[#out + 1] = "<option value=\"" .. opt[1] .. "\"" .. sel .. ">"
+                    .. esc(translate(opt[2])) .. "</option>"
+            end
+            out[#out + 1] = "</select></form></td></tr>"
+        end
+        row(translate("Own numbers"), d.own_numbers)
+        endtbl()
+
+        if not d.nosim then
+        h3(translate("Network registration"))
+        tbl()
+        row(translate("Operator"), d.operator)
+        row(translate("Operator code"), d.opcode, true)
+        row(translate("Registration state"), d.reg)
+        row(translate("Packet service state"), d.ps)
+        row(translate("Access technologies"), d.accesstech)
+        row(translate("APN"), d.apn, true)
+        row(translate("UE mode operation"), d.ue_mode)
+        row(translate("MiCo mode"), d.mico)
+        row(translate("DRX cycle"), d.drx)
+
+        local sig = tonumber(d.signal) or 0
+        if sig > 100 then sig = 100 end
+        local barcls = (sig <= 0 and "nosig") or ((sig < 50 and "low") or "")
+        local kind = (d.signal_recent == "yes") and translate("recent")
+            or translate("average")
+        row(translate("Signal quality"), nil, nil,
+            "<span class=\"mmm-bar " .. barcls .. "\">"
+            .. "<span style=\"width: " .. sig .. "%\"></span></span>"
+            .. "<span class=\"mmm-sig-text\">" .. sig .. "% (" .. kind .. ")</span>")
+        endtbl()
+        end -- not d.nosim: 无 SIM 时注册数据未读取，隐藏整块
+
+        if d.reject and d.reject ~= "--" and d.reject ~= "" then
+            h3(translate("Network rejection"))
+            tbl()
+            row(translate("Rejection error"), d.reject)
+            row(translate("Rejected operator id"), d.reject_opid, true)
+            row(translate("Rejected operator name"), d.reject_opname)
+            row(translate("Rejected access technology"), d.reject_rat)
+            endtbl()
+        end
+
+        if d.serving_reg or d.band or d.current_bands or d.supported_bands then
+            h3(translate("Radio bands"))
+            tbl()
+            if d.band then
+                row(translate("Current band (QMI)"), d.band, true)
+            end
+            if d.channel then
+                row(translate("Current channel"), d.channel, true)
+            end
+            if d.current_bands and d.current_bands ~= "--" then
+                row(translate("Current bands (MM)"), d.current_bands, true)
+            end
+            local sup = d.supported_bands
+            if (not sup or sup == "--") and d.cell and d.cell.qmi_bands then
+                sup = d.cell.qmi_bands
+            end
+            if sup and sup ~= "--" then
+                row(translate("Supported bands"), sup, true)
+            end
+            endtbl()
+        end
+
+        if not d.nosim and d.serving_reg then
+            h3(translate("QMI radio layer"))
+            tbl()
+            row(translate("Serving registration state"), d.serving_reg)
+            if d.roaming then
+                row(translate("Roaming status"), d.roaming)
+            end
+            if d.plmn_mcc then
+                row(translate("Current PLMN"),
+                    (d.plmn_mcc or "") .. (d.plmn_mnc or ""), true)
+            end
+            endtbl()
+        end
+    end
+
+    -- 基站信令（服务小区/邻区 + 信号强度）
+    if not d.nosim and d.cell and (d.cell.plmn or d.cell.tac or d.cell.gci or
+                   (d.cell.cells and #d.cell.cells > 0)) then
+        h3(translate("Base station signaling"))
+        tbl()
+        if d.cell.plmn then
+            row(translate("PLMN"), d.cell.plmn, true)
+        end
+        if d.cell.tac then
+            row(translate("Tracking area code"), d.cell.tac, true)
+        end
+        if d.cell.gci then
+            row(translate("Global cell ID"), d.cell.gci, true)
+        end
+        if d.cell.earfcn then
+            row(translate("EARFCN"), d.cell.earfcn, true)
+        end
+        if d.cell.earfcn_band then
+            row(translate("LTE band"), "band " .. d.cell.earfcn_band, true)
+        end
+        if d.cell.serving_cell then
+            row(translate("Serving cell ID"), d.cell.serving_cell, true)
+        end
+        if d.cell.sig_rsrp then
+            row(translate("Serving RSRP"), d.cell.sig_rsrp, true)
+        end
+        if d.cell.sig_rsrq then
+            row(translate("Serving RSRQ"), d.cell.sig_rsrq, true)
+        end
+        if d.cell.sig_snr then
+            row(translate("Serving SNR"), d.cell.sig_snr, true)
+        end
+        endtbl()
+
+        if d.cell.cells and #d.cell.cells > 0 then
+            tbl()
+            out[#out + 1] = "<tr><th>" .. esc(translate("Cell"))
+                .. "</th><th>" .. esc(translate("PCI")) .. "</th>"
+                .. "<th>" .. esc(translate("RSRP")) .. "</th>"
+                .. "<th>" .. esc(translate("RSRQ")) .. "</th>"
+                .. "<th>" .. esc(translate("RSSI")) .. "</th></tr>"
+            for _, c in ipairs(d.cell.cells) do
+                out[#out + 1] = "<tr><td>" .. esc("Cell " .. c.idx) .. "</td>"
+                    .. "<td>" .. esc(T(c.pci)) .. "</td>"
+                    .. "<td>" .. esc(T(c.rsrp)) .. "</td>"
+                    .. "<td>" .. esc(T(c.rsrq)) .. "</td>"
+                    .. "<td>" .. esc(T(c.rssi)) .. "</td></tr>"
+            end
+            endtbl()
+        end
+    end
+
+    -- SIM 卡信息
+    h3(translate("SIM card"))
+    tbl()
+    row(translate("Active SIM slot"), d.sim and d.sim.select or "--", true)
+    row(translate("ICCID"), d.sim and d.sim.iccid or "--", true)
+    row(translate("IMSI"), d.sim and d.sim.imsi or "--", true)
+    endtbl()
+    if d.sim and d.sim.slots and #d.sim.slots > 0 then
+        tbl()
+        out[#out + 1] = "<tr><th>" .. esc(translate("Slot"))
+            .. "</th><th>" .. esc(translate("Card state")) .. "</th>"
+            .. "<th>" .. esc(translate("UPIN state")) .. "</th></tr>"
+        for _, s in ipairs(d.sim.slots) do
+            out[#out + 1] = "<tr><td>" .. esc("Slot " .. s.num) .. "</td>"
+                .. "<td>" .. esc(T(s.state)) .. "</td>"
+                .. "<td>" .. esc(T(s.upin)) .. "</td></tr>"
+        end
+        endtbl()
+    end
+
+    -- 切卡
+    h3(translate("SIM slot switching"))
+    local cur = d.sim and d.sim.select or "sim"
+    out[#out + 1] = "<form method=\"post\" action=\"\">"
+        .. "<input type=\"hidden\" name=\"act\" value=\"switch\" />"
+        .. "<div class=\"row\"><label>" .. esc(translate("Active SIM")) .. "</label>"
+        .. "<select name=\"select\">"
+    for _, opt in ipairs({ {"sim", "Physical SIM"},
+                           {"esim1", "eSIM 1"}, {"esim2", "eSIM 2"} }) do
+        local sel = (cur == opt[1]) and " selected=\"selected\"" or ""
+        out[#out + 1] = "<option value=\"" .. opt[1] .. "\"" .. sel .. ">"
+            .. esc(translate(opt[2])) .. "</option>"
+    end
+    out[#out + 1] = "</select>"
+        .. "<button type=\"submit\" class=\"btn primary\">"
+        .. esc(translate("Switch")) .. "</button></div>"
+        .. "<span class=\"hint\">"
+        .. esc(translate("Switching restarts the modem so it re-detects the selected SIM."))
+        .. "</span></form>"
+
+    -- IMEI 修改
+    h3(translate("IMEI modification"))
+    out[#out + 1] = "<form method=\"post\" action=\"\">"
+        .. "<input type=\"hidden\" name=\"act\" value=\"imei\" />"
+        .. "<div class=\"row\"><label>" .. esc(translate("Current IMEI (NV)")) .. "</label>"
+        .. "<input type=\"text\" value=\"" .. esc(d.imei_nv or "") .. "\""
+        .. " readonly=\"readonly\" />"
+        .. "</div>"
+        .. "<div class=\"row\"><label>" .. esc(translate("New IMEI")) .. "</label>"
+        .. "<input type=\"text\" name=\"imei\" maxlength=\"15\" pattern=\"[0-9]{15}\""
+        .. " required=\"required\" placeholder=\"868408030580779\" />"
+        .. "<button type=\"submit\" class=\"btn primary\">"
+        .. esc(translate("Write IMEI")) .. "</button></div>"
+        .. "<span class=\"hint\">"
+        .. esc(translate("The IMEI is written to NV item 550 and persisted. Writing takes a few seconds."))
+        .. "</span></form>"
+
+    write("<div class=\"mmm-page\">" .. table.concat(out) .. "</div>")
+-%>
+
+<%+footer%>
