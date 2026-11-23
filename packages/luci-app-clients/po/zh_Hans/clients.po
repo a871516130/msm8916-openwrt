@@ -1,0 +1,71 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: zh_Hans\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+msgid "Clients"
+msgstr "客户端"
+
+msgid "Connected Clients"
+msgstr "已连接客户端"
+
+msgid "Associated Wi-Fi clients, refreshed every 5 seconds. Read-only."
+msgstr "已关联的 Wi-Fi 客户端，每 5 秒刷新一次。只读。"
+
+msgid "No clients are associated."
+msgstr "没有已关联的客户端。"
+
+msgid "client"
+msgstr "个客户端"
+
+msgid "clients"
+msgstr "个客户端"
+
+msgid "MAC address"
+msgstr "MAC 地址"
+
+msgid "Interface"
+msgstr "接口"
+
+msgid "Signal"
+msgstr "信号"
+
+msgid "Signal avg"
+msgstr "平均信号"
+
+msgid "TX rate"
+msgstr "发送速率"
+
+msgid "RX rate"
+msgstr "接收速率"
+
+msgid "Connected"
+msgstr "已连接"
+
+msgid "Power save"
+msgstr "省电模式"
+
+msgid "Off"
+msgstr "关闭"
+
+msgid "On"
+msgstr "开启"
+
+msgid "WMM"
+msgstr "WMM"
+
+msgid "Legacy PS-Poll"
+msgstr "传统 PS-Poll"
+
+msgid "Unknown"
+msgstr "未知"
+
+msgid ""
+"A client showing Legacy PS-Poll is dozing between beacons. That state is "
+"not visible in retry or drop counters, which stay at zero even when the "
+"link is stalling."
+msgstr ""
+"显示\"传统 PS-Poll\"的客户端正在信标之间休眠。该状态在重传或丢包计数器中不可见——"
+"即使链路已经卡死，这些计数器仍可能保持为零。"
