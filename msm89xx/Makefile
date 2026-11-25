@@ -96,7 +96,7 @@ DEFAULT_PACKAGES += \
 	kmod-crypto-lib-chacha20 kmod-crypto-lib-chacha20poly1305 \
 	kmod-crypto-lib-curve25519 kmod-crypto-lib-poly1305 \
 	kmod-lib-lzo kmod-tun kmod-udptunnel4 kmod-udptunnel6 \
-	kmod-wireguard kmod-zram libatomic libattr \
+	kmod-zram libatomic libattr \
 	libavahi-dbus-support libdaemon libdbus libexpat libfdisk \
 	libffi libiwinfo libiwinfo-data libltdl liblua liblucihttp \
 	liblucihttp-lua liblucihttp-ucode libmbim libminiupnpc \
@@ -109,14 +109,14 @@ DEFAULT_PACKAGES += \
 	luci-lib-uqr luci-light luci-lua-runtime luci-mod-admin-full \
 	luci-mod-network luci-mod-rpc luci-mod-status luci-mod-system \
 	luci-proto-ipv6 luci-proto-modemmanager luci-proto-ppp \
-	luci-proto-wireguard luci-theme-bootstrap modemmanager \
+	luci-theme-bootstrap modemmanager \
 	mount-utils mtools nano openssh-sftp-avahi-service \
 	openssh-sftp-client openssh-sftp-server px5g-mbedtls qmi-utils \
 	resize2fs resolveip rpcd rpcd-mod-file rpcd-mod-iwinfo \
 	rpcd-mod-luci rpcd-mod-rrdns rpcd-mod-ucode rrdtool1 sfdisk \
 	strace sysfsutils terminfo trace-cmd tune2fs ucode-mod-html \
 	ucode-mod-log ucode-mod-lua ucode-mod-math uhttpd \
-	uhttpd-mod-ubus wireguard-tools zerotier zram-swap
+	uhttpd-mod-ubus zram-swap
 # Physical reset button bridge.  These dongles have no Ethernet and no
 # accessible UART, so the on-board Restart button (a `gpio-keys` node in the
 # DTS) is the only way to reach failsafe mode.  kmod-gpio-button-hotplug binds
