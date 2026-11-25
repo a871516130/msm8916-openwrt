@@ -28,6 +28,7 @@ on:
           - jz02
           - mf32lt
           - jz0145
+          - mifid
 
 env:
   UPLOAD_FIRMWARE: true

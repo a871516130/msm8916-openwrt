@@ -20,6 +20,7 @@ the qcom Makefile.
 +dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-generic-jz02.dtb
 +dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-generic-mf32lt.dtb
 +dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-generic-jz0145.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-generic-mifid.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-samsung-j5x.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-samsung-rossa.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-samsung-serranove.dtb
