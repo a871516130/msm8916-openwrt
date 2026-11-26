@@ -354,3 +354,7 @@ msgstr "代理运行中"
 msgid "Agent not running"
 msgstr "代理未运行"
 
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:133
+msgid "Battery"
+msgstr "电量"
+

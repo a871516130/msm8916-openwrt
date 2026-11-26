@@ -155,6 +155,7 @@ function renderDevices(devices, view) {
 		E('th', { 'class': 'th cbi-section-table-cell' }, _('Paired')),
 		E('th', { 'class': 'th cbi-section-table-cell' }, _('Bonded')),
 		E('th', { 'class': 'th cbi-section-table-cell' }, _('Connected')),
+		E('th', { 'class': 'th cbi-section-table-cell' }, _('Battery')),
 		E('th', { 'class': 'th cbi-section-table-cell cbi-section-actions' }, _('Actions'))
 	]);
 
@@ -215,12 +216,16 @@ function renderDevices(devices, view) {
 
 		const connectedCell = E('td', { 'class': 'td cbi-value-field' }, dev.connected ? _('Yes') : _('No'));
 
+		const batteryCell = E('td', { 'class': 'td cbi-value-field' },
+			(dev.battery != null && dev.battery !== '') ? dev.battery + '%' : '-');
+
 		return E('tr', { 'class': 'tr cbi-section-table-row' }, [
 			E('td', { 'class': 'td cbi-value-field' }, dev.name || dev.mac),
 			macCell,
 			E('td', { 'class': 'td cbi-value-field' }, dev.paired ? _('Yes') : _('No')),
 			E('td', { 'class': 'td cbi-value-field' }, dev.bonded ? _('Yes') : _('No')),
 			connectedCell,
+			batteryCell,
 			E('td', { 'class': 'td cbi-section-table-cell nowrap cbi-section-actions' }, E('div', {}, buttons))
 		]);
 	});
@@ -372,11 +377,15 @@ function renderVoiceDevices(devices, audio) {
 		const paired = headsetDev && headsetDev.paired;
 		const stateEl = E('em', { 'style': 'color: ' + (connected ? 'green' : paired ? 'orange' : 'red') + ';' },
 			' \u2014 ' + (connected ? _('Connected') : paired ? _('Paired, not connected') : _('Not paired')));
+		const battery = (connected && headsetDev && headsetDev.battery != null)
+			? E('em', { 'style': 'color: #555;' }, ' \u00b7 ' + headsetDev.battery + '%')
+			: null;
 
 		items.push(row(_('Call headset'), [
 			headsetMac,
 			fallback ? E('em', {}, ' (' + _('first paired device, no headset configured') + ')') : null,
-			stateEl
+			stateEl,
+			battery
 		]));
 	} else {
 		items.push(row(_('Call headset'),

@@ -63,6 +63,17 @@ get_bluealsa_info() {
     fi
 }
 
+# Battery percentage (Battery Service) BlueZ reports for a device, from
+# "bluetoothctl info".  Empty when the device exposes no battery or is not
+# connected, in which case the frontend shows "-".
+get_battery() {
+    local mac="$1"
+    local info
+
+    info=$(timeout 5 bluetoothctl info "$mac" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g')
+    echo "$info" | awk '/Battery Percentage/ { gsub(/[()]/, "", $NF); print $NF; exit }'
+}
+
 echo "{"
 echo '  "devices": ['
 
@@ -90,7 +101,19 @@ echo "$ALL" | grep "^Device" | while read -r line; do
     printf '      "name": "%s",\n' "$name"
     printf '      "paired": %s,\n' "$paired"
     printf '      "bonded": %s,\n' "$bonded"
-    printf '      "connected": %s' "$connected"
+    printf '      "connected": %s,\n' "$connected"
+
+    # Only a known device (paired or connected) can report a battery; skip
+    # the per-device bluetoothctl call for anything merely discovered.
+    battery=""
+    if [ "$paired" = "true" ] || [ "$connected" = "true" ]; then
+        battery=$(get_battery "$mac")
+    fi
+    if [ -n "$battery" ]; then
+        printf '      "battery": %s' "$battery"
+    else
+        printf '      "battery": null'
+    fi
 
     if [ "$connected" = "true" ]; then
         bluealsa_info=$(get_bluealsa_info "$mac")
