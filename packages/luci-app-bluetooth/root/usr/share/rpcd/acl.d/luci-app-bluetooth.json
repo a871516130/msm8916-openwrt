@@ -5,7 +5,8 @@
       "ubus": {
         "luci.bluetooth": [
           "get_status",
-          "get_devices"
+          "get_devices",
+          "get_pin"
         ]
       }
     },
@@ -21,7 +22,8 @@
           "set_alias",
           "set_codec",
           "set_volume",
-          "remove_device"
+          "remove_device",
+          "set_pin"
         ]
       }
     }

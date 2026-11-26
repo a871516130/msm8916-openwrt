@@ -77,6 +77,18 @@ const setVolume = rpc.declare({
 	params: [ 'data' ]
 });
 
+const getPin = rpc.declare({
+	object: 'luci.bluetooth',
+	method: 'get_pin',
+	expect: { '': {} }
+});
+
+const setPin = rpc.declare({
+	object: 'luci.bluetooth',
+	method: 'set_pin',
+	params: [ 'mac', 'pin' ]
+});
+
 function renderStatus(status) {
 	const spanTemp = '<em><span style="color:%s"><strong>%s</strong></span></em>';
 	let renderHTML;
@@ -384,10 +396,12 @@ return view.extend({
 		poll.add(() => {
 			return Promise.all([
 				getStatus(),
-				getDevices()
+				getDevices(),
+				getPin()
 			]).then(res => {
 				const status = res[0];
 				const devices = res[1].devices || [];
+				const pin = res[2] || {};
 
 				view.__status = status;
 				const statusEl = document.getElementById('service_status');
@@ -441,6 +455,28 @@ return view.extend({
 					audioTitleEl.innerText = (status.audio && status.audio.capability === 'a2dp')
 						? _('Connected Audio Devices')
 						: _('Bluetooth Voice (Handsfree)');
+				}
+
+				// Pairing PIN policy.  Pre-fill once so later polls do not
+				// clobber what the user is typing.
+				const pinMacEl = document.getElementById('bt_pin_mac');
+				const pinPinEl = document.getElementById('bt_pin_pin');
+				const pinStatusEl = document.getElementById('bt_pin_status');
+
+				if (pinStatusEl) {
+					if (!pin.installed) {
+						pinStatusEl.innerText = _('bt-agent (bluez-tools) is not installed.');
+						if (pinMacEl) pinMacEl.disabled = true;
+						if (pinPinEl) pinPinEl.disabled = true;
+					} else {
+						if (pinMacEl && !pinMacEl.value && pin.mac)
+							pinMacEl.value = pin.mac;
+						if (pinPinEl && !pinPinEl.value && pin.pin)
+							pinPinEl.value = pin.pin;
+						pinStatusEl.innerText = pin.running
+							? _('Agent running')
+							: _('Agent not running');
+					}
 				}
 			});
 		});
@@ -505,6 +541,36 @@ return view.extend({
 		const deviceTable = E('div', { 'id': 'devices_list' }, E('em', {}, _('Collecting data...')));
 		const audioDeviceTable = E('div', { 'id': 'audio_devices_list' }, E('em', {}, _('Collecting data...')));
 
+		// Pairing PIN policy for the bt-agent that answers phone pairings.
+		const pinMacInput = E('input', {
+			'type': 'text',
+			'id': 'bt_pin_mac',
+			'placeholder': '*',
+			'style': 'width: 180px; margin-right: 8px;'
+		});
+		const pinPinInput = E('input', {
+			'type': 'text',
+			'id': 'bt_pin_pin',
+			'placeholder': '0000',
+			'style': 'width: 100px; margin-right: 8px;'
+		});
+		const pinSaveButton = E('button', {
+			'class': 'cbi-button cbi-button-action',
+			'click': ui.createHandlerFn(this, () => {
+				const mac = document.getElementById('bt_pin_mac').value;
+				const pin = document.getElementById('bt_pin_pin').value;
+				return setPin(mac, pin).then(res => {
+					if (res && res.success) {
+						ui.addNotification(null, E('p', _('Pairing PIN updated.')));
+						return view.load().then(view.render.bind(view));
+					}
+					ui.addNotification(null, E('p', _('Failed to update PIN: %s').format(res && res.error ? res.error : _('Unknown error'))), 'error');
+				}).catch(err => {
+					ui.addNotification(null, E('p', _('Failed to update PIN: %s').format(err.message)), 'error');
+				});
+			})
+		}, _('Save PIN'));
+
 		return E([], [
 			E('h2', {}, _('Bluetooth Management')),
 			E('div', { 'class': 'cbi-section' }, [
@@ -533,6 +599,18 @@ return view.extend({
 			E('div', { 'class': 'cbi-section' }, [
 				E('h3', {}, _('Discovered & Paired Devices')),
 				deviceTable
+			]),
+			E('div', { 'class': 'cbi-section' }, [
+				E('h3', {}, _('Pairing PIN')),
+				E('p', { 'style': 'font-size: 12px; color: #888; margin: 4px 0 8px;' },
+					_('The PIN bt-agent answers with when a device pairs to this router. ' +
+					  'Use "*" to accept any device, or a specific MAC to accept only that device.')),
+				E('div', { 'style': 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;' }, [
+					pinMacInput,
+					pinPinInput,
+					pinSaveButton
+				]),
+				E('p', { 'style': 'font-size: 12px; margin-top: 8px;', id: 'bt_pin_status' }, _('Collecting data...'))
 			]),
 			E('div', { 'class': 'cbi-section' }, [
 				E('h3', { id: 'audio_section_title' }, _('Bluetooth Voice (Handsfree)')),

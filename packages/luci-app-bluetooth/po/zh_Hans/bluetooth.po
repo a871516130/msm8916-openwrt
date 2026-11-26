@@ -313,3 +313,44 @@ msgstr "第一个已配对设备（未配置耳机）"
 msgid "No headset configured. Pair one in the device list, then set it on the Phone page."
 msgstr "未配置耳机。请在设备列表中配对一台，然后在「电话」页面设置。"
 
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:545
+msgid "Pairing PIN"
+msgstr "配对 PIN"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:546
+msgid ""
+"The PIN bt-agent answers with when a device pairs to this router. Use \"*\" to "
+"accept any device, or a specific MAC to accept only that device."
+msgstr ""
+"bt-agent 在设备与本机配对时使用的 PIN。使用「*」接受任意设备，或指定 MAC "
+"只接受该设备。"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:552
+msgid "Save PIN"
+msgstr "保存 PIN"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:556
+msgid "Pairing PIN updated."
+msgstr "配对 PIN 已更新。"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:559
+#, javascript-format
+msgid "Failed to update PIN: %s"
+msgstr "更新 PIN 失败: %s"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:559
+msgid "Unknown error"
+msgstr "未知错误"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:571
+msgid "bt-agent (bluez-tools) is not installed."
+msgstr "bt-agent（bluez-tools）未安装。"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:572
+msgid "Agent running"
+msgstr "代理运行中"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:572
+msgid "Agent not running"
+msgstr "代理未运行"
+

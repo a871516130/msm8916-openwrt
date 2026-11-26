@@ -139,6 +139,40 @@ const audio_capability = () => {
 	}
 };
 
+// True when a file or directory exists.
+const have = (path) => {
+	try {
+		const handle = popen(`[ -e ${shellquote(path)} ] && echo 1 || echo 0`, 'r');
+		if (!handle)
+			return false;
+
+		const out = trim(handle.read('all'));
+		handle.close();
+
+		return out === '1';
+	}
+	catch (e) {
+		return false;
+	}
+};
+
+// Run a shell command, returning stdout+stderr ('' on failure to spawn).
+const sh_out = (cmd) => {
+	try {
+		const handle = popen(cmd + ' 2>&1', 'r');
+		if (!handle)
+			return '';
+
+		const out = handle.read('all');
+		handle.close();
+
+		return out;
+	}
+	catch (e) {
+		return '';
+	}
+};
+
 const methods = {
 	get_status: {
 		call: function() {
@@ -467,6 +501,44 @@ const methods = {
 			} catch (e) {
 				return { success: false, error: 'An unexpected exception occurred.', details: e.message };
 			}
+		}
+	},
+
+	get_pin: {
+		call: function() {
+			const installed = have('/etc/init.d/btagent');
+
+			return {
+				installed: installed,
+				mac: installed ? uci_get('btagent.@btagent[0].mac') : '',
+				pin: installed ? uci_get('btagent.@btagent[0].pin') : '',
+				running: running('bt-agent')
+			};
+		}
+	},
+
+	set_pin: {
+		args: { mac: 'string', pin: 'string' },
+		call: function(req) {
+			const mac = trim(req.args.mac || '');
+			const pin = trim(req.args.pin || '');
+
+			if (mac != '*' && !valid_mac(mac))
+				return { success: false, error: 'MAC must be "*" or a valid address.' };
+
+			if (!match(pin, /^[0-9]{4,8}$/))
+				return { success: false, error: 'PIN must be 4-8 digits.' };
+
+			if (!have('/etc/init.d/btagent'))
+				return { success: false, error: 'bt-agent (bluez-tools) is not installed.' };
+
+			// bt_pin.sh writes the uci policy, regenerates the PIN file from it
+			// and (re)starts bt-agent so the new policy takes effect.
+			const out = sh_out(`${shellquote('/usr/libexec/bluetooth/bt_pin.sh')} ${shellquote(mac)} ${shellquote(pin)}`);
+			if (trim(out) != 'ok')
+				return { success: false, error: trim(out) || 'Setting the PIN failed.' };
+
+			return { success: true, running: running('bt-agent') };
 		}
 	}
 };

@@ -4,7 +4,7 @@
 include $(TOPDIR)/rules.mk
 
 LUCI_TITLE:=LuCI support for bluetooth
-LUCI_DEPENDS:=+luci-base +bluez-daemon
+LUCI_DEPENDS:=+luci-base +bluez-daemon +bluez-tools
 LUCI_PKGARCH:=all
 
 PKG_LICENSE:=GPL-3.0
