@@ -4,17 +4,24 @@
 
 import { popen } from 'fs';
 
+const BTCTL = '/usr/bin/bluetoothctl';
+// Every bluetoothctl call is bounded: the interactive shell hangs until BlueZ
+// times out otherwise, which would hang the RPC call and the LuCI page with it.
+const BTCTL_TIMEOUT = 'timeout 20';
+
 const shellquote = (s) => {
 	return `'${replace(s, "'", "'\\''")}'`;
 };
 
+// bluetoothctl errors on stderr and exits non-zero; merge both so the caller
+// can tell success from failure.
 const run_btctl = (command) => {
 	try {
-		const cmd_str = `bluetoothctl ${command} 2>&1`;
-		const handle = popen(cmd_str, 'r');
-		if (!handle) return null;
+		const handle = popen(`${BTCTL_TIMEOUT} ${BTCTL} ${command} 2>&1`, 'r');
+		if (!handle)
+			return null;
 
-		let output = handle.read("all");
+		const output = handle.read('all');
 		handle.close();
 
 		return output;
@@ -22,6 +29,53 @@ const run_btctl = (command) => {
 	catch (e) {
 		return null;
 	}
+};
+
+// bluetoothctl prints nothing on success and something like
+// "Error: Connection failed: ..." or "Failed to set powered" on failure.
+const bt_ok = (output) => {
+	if (output == null)
+		return false;
+
+	if (match(output, /error|failed|denied|not permitted|invalid/i))
+		return false;
+
+	return true;
+};
+
+// Outcomes that mean BlueZ is already in the state we asked for.  Turning off a
+// scan that is not running, disconnecting or removing a device that is not
+// connected are all harmless, so those commands may answer with one of these.
+const ALREADY = /not found|not supported|not connected|not paired|not bonded|not registered|already/i;
+
+const bt_relaxed = (output) => {
+	if (bt_ok(output) || (output != null && match(output, ALREADY)))
+		return true;
+
+	return false;
+};
+
+// bluetoothctl emits colour codes plus a flood of [CHG]/[NEW] events; keep only
+// readable text and the last line, which is where the verdict lands.
+const bt_msg = (output) => {
+	if (output == null)
+		return '';
+
+	let last = '';
+	const lines = split(replace(output, /\x1b\[[0-9;]*m/g, ''), '\n');
+	for (let i = 0; i < length(lines); i++) {
+		const t = trim(lines[i]);
+		if (length(t) > 0 && !match(t, /^\[(CHG|NEW)\]/))
+			last = t;
+	}
+
+	return last;
+};
+
+const is_on = (v) => (v === true || v === 1 || v === '1' || v === 'true' || v === 'on');
+
+const valid_mac = (mac) => {
+	return (type(mac) == 'string' && match(trim(mac), /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/));
 };
 
 const methods = {
@@ -86,7 +140,7 @@ const methods = {
 						return { devices: [] };
 					}
 				} catch (e) {
-					return { devices: [] };
+					return { devices: [], error: 'Failed to parse device list.' };
 				}
 			}
 			catch (e) {
@@ -98,10 +152,50 @@ const methods = {
 	set_power: {
 		args: { on: 0 },
 		call: function(req) {
-			const val = req.args.on;
-			const is_on = (val === true || val === 1 || val === "1" || val === "true" || val === "on");
-			const cmd = is_on ? 'power on' : 'power off';
-			run_btctl(cmd);
+			const cmd = is_on(req.args.on) ? 'power on' : 'power off';
+			const output = run_btctl(cmd);
+
+			if (!bt_ok(output))
+				return { success: false, error: 'Setting powered failed.' };
+
+			return { success: true };
+		}
+	},
+
+	// Peripheral role: a phone pairs *to* this router, so it has to be
+	// discoverable first.  BlueZ stops advertising again once
+	// DiscoverableTimeout elapses, which is why a bounded duration is offered
+	// instead of a bare on/off -- and why this used to be missing entirely:
+	// nothing on the device ever set discoverable, so no phone could ever find
+	// the router.
+	//
+	// bluetoothctl's --timeout is a *command* timeout, not an advertising
+	// duration, so the duration has to be programmed with
+	// "discoverable-timeout" first.
+	set_discoverable: {
+		args: { on: 0, seconds: 180 },
+		call: function(req) {
+			if (is_on(req.args.on)) {
+				let sec = `${req.args.seconds}`;
+				if (!match(sec, /^[0-9]+$/) || +sec < 10 || +sec > 7200)
+					sec = '180';
+
+				if (!bt_ok(run_btctl(`-- discoverable-timeout ${sec}`)))
+					return { success: false, error: 'Setting the discoverable timeout failed.' };
+
+				const output = run_btctl('discoverable on');
+
+				if (!bt_ok(output))
+					return { success: false, error: 'Setting discoverable failed.' };
+
+				return { success: true };
+			}
+
+			const output = run_btctl('discoverable off');
+
+			if (!bt_ok(output))
+				return { success: false, error: 'Setting discoverable failed.' };
+
 			return { success: true };
 		}
 	},
@@ -109,45 +203,63 @@ const methods = {
 	start_scan: {
 		args: { on: 0 },
 		call: function(req) {
-			const val = req.args.on;
-			const is_on = (val === true || val === 1 || val === "1" || val === "true" || val === "on");
-			const cmd = is_on ? '--timeout 5 scan on' : 'scan off';
-			run_btctl(cmd);
+			if (!is_on(req.args.on)) {
+				// Stopping a scan that is not running answers
+				// "Failed to stop discovery", which is harmless either way.
+				run_btctl('scan off');
+				return { success: true };
+			}
+
+			// Bounded with --timeout so the popen cannot hang the RPC call.
+			// Discovery runs while the command lives and stops when it exits,
+			// which is the duration the frontend waits for.
+			const output = run_btctl('--timeout=5 scan on');
+
+			if (!bt_ok(output))
+				return { success: false, error: 'Starting the scan failed.' };
+
 			return { success: true };
 		}
 	},
 
+	// No expect/unbuffer dependency: a helper script driving bluetoothctl
+	// interactively can never run here (neither is installed), and the old path
+	// swallowed the "not found" output and still reported success.
 	pair: {
 		args: { mac: 'string' },
 		call: function(req) {
-			if (!req.args.mac) {
-				return { success: false, error: 'MAC address required' };
+			if (!valid_mac(req.args.mac)) {
+				return { success: false, error: 'A valid MAC address is required.' };
 			}
 
-			const cmd = `unbuffer /usr/libexec/bluetooth/bt_pair_exp.sh ${shellquote(req.args.mac)}`;
+			const mac = trim(req.args.mac);
+			const output = run_btctl(`-- pair ${shellquote(mac)}`);
 
-			try {
-				const handle = popen(cmd, 'r');
-				if (!handle) {
-					return { success: false, error: 'Failed to execute pairing script.' };
-				}
+			if (!bt_relaxed(output))
+				return { success: false, error: 'Pairing failed: ' + bt_msg(output) };
 
-				handle.read('all');
-				handle.close();
+			// Persist the key so the device reconnects after a reboot.  Trust is
+			// best-effort: some controllers reject it, which is not a failure.
+			const trust_output = run_btctl(`-- trust ${shellquote(mac)}`);
 
-				return { success: true };
-
-			} catch (e) {
-				return { success: false, error: 'Exception while running pairing script.', details: e.message };
-			}
+			return {
+				success: true,
+				trusted: bt_ok(trust_output)
+			};
 		}
 	},
 
 	connect: {
 		args: { mac: 'string' },
 		call: function(req) {
-			if (!req.args.mac) return { success: false, error: 'MAC address required' };
-			run_btctl(`connect ${shellquote(req.args.mac)}`);
+			if (!valid_mac(req.args.mac))
+				return { success: false, error: 'A valid MAC address is required.' };
+
+			const output = run_btctl(`-- connect ${shellquote(trim(req.args.mac))}`);
+
+			if (!bt_ok(output))
+				return { success: false, error: 'Connecting failed: ' + bt_msg(output) };
+
 			return { success: true };
 		}
 	},
@@ -155,8 +267,14 @@ const methods = {
 	disconnect: {
 		args: { mac: 'string' },
 		call: function(req) {
-			if (!req.args.mac) return { success: false, error: 'MAC address required' };
-			run_btctl(`disconnect ${shellquote(req.args.mac)}`);
+			if (!valid_mac(req.args.mac))
+				return { success: false, error: 'A valid MAC address is required.' };
+
+			const output = run_btctl(`-- disconnect ${shellquote(trim(req.args.mac))}`);
+
+			if (!bt_relaxed(output))
+				return { success: false, error: 'Disconnecting failed: ' + bt_msg(output) };
+
 			return { success: true };
 		}
 	},
@@ -164,26 +282,38 @@ const methods = {
 	remove_device: {
 		args: { mac: 'string' },
 		call: function(req) {
-			try {
-				if (!req.args.mac) {
-					return { success: false, error: 'MAC address required' };
-				}
+			if (!valid_mac(req.args.mac))
+				return { success: false, error: 'A valid MAC address is required.' };
 
-				run_btctl(`remove ${shellquote(req.args.mac)}`);
+			const output = run_btctl(`-- remove ${shellquote(trim(req.args.mac))}`);
 
-				return { success: true };
+			if (!bt_relaxed(output))
+				return { success: false, error: 'Removing failed: ' + bt_msg(output) };
 
-			} catch (e) {
-				return { success: false, error: 'Exception while removing device.', details: e };
-			}
+			return { success: true };
 		}
 	},
 
 	set_alias: {
 		args: { alias: 'string' },
 		call: function(req) {
-			if (!req.args.alias) return { success: false, error: 'Alias required' };
-			run_btctl(`system-alias ${shellquote(req.args.alias)}`);
+			const alias = trim(req.args.alias);
+			if (!alias || length(alias) > 50)
+				return { success: false, error: 'Alias must be 1-50 characters.' };
+
+			// bt_alias.sh enforces the same whitelist, which keeps the value safe
+			// both for BlueZ and inside a sed replacement.
+			if (!match(alias, /^[A-Za-z0-9 ._-]+$/))
+				return { success: false, error: 'Alias may only contain letters, digits, spaces, ".", "-" and "_".' };
+
+			const output = run_btctl(`system-alias ${shellquote(alias)}`);
+
+			if (!bt_ok(output))
+				return { success: false, error: 'Setting the alias failed.' };
+
+			// BlueZ stores the alias under /etc/bluetooth/keys/<MAC>/settings, so
+			// it survives a reboot on its own.
+
 			return { success: true };
 		}
 	},
@@ -199,8 +329,10 @@ const methods = {
 				const mac = req.args.data.mac;
 				const codec = req.args.data.codec;
 
-				if (!mac) return { success: false, error: 'MAC address required in data object.' };
-				if (!codec) return { success: false, error: 'Codec required in data object.' };
+				if (!valid_mac(mac))
+					return { success: false, error: 'A valid MAC address is required in data.' };
+				if (!codec)
+					return { success: false, error: 'Codec required in data object.' };
 
 				const bluealsa_mac = replace(mac, /:/g, '_');
 				const bluealsa_path = `/org/bluealsa/hci0/dev_${bluealsa_mac}/a2dpsrc/sink`;
@@ -236,8 +368,8 @@ const methods = {
 				const mac = req.args.data.mac;
 				const volume = req.args.data.volume;
 
-				if (!mac) {
-					return { success: false, error: 'MAC address required in data object.' };
+				if (!valid_mac(mac)) {
+					return { success: false, error: 'A valid MAC address is required in data.' };
 				}
 
 				if (volume == null) {

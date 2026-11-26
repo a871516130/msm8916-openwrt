@@ -13,6 +13,7 @@
       "ubus": {
         "luci.bluetooth": [
           "set_power",
+          "set_discoverable",
           "start_scan",
           "pair",
           "connect",

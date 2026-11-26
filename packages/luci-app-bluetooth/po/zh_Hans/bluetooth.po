@@ -228,3 +228,40 @@ msgstr "已发现和已配对的设备"
 msgid "Connected Audio Devices"
 msgstr "已连接的音频设备"
 
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:94
+msgid "Discoverable"
+msgstr "可被发现"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:96
+msgid "Not discoverable"
+msgstr "不可被发现"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:348
+msgid "Stop Advertising"
+msgstr "停止广播"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:348
+msgid "Advertise to Phones"
+msgstr "对手机广播"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:404
+msgid "1 minute"
+msgstr "1 分钟"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:405
+msgid "5 minutes"
+msgstr "5 分钟"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:406
+msgid "30 minutes"
+msgstr "30 分钟"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:450
+msgid ""
+"This router pairs as a peripheral, so a phone finds it only while it is "
+"discoverable. Use \"Advertise to Phones\" to make it appear in the phone "
+"Bluetooth list for the selected duration, then start pairing from the phone."
+msgstr ""
+"本机作为外设配对，只有在可被发现时手机才能找到它。使用「对手机广播」让本机在"
+"所选时长内出现在手机的蓝牙列表中，然后从手机端发起配对。"
+

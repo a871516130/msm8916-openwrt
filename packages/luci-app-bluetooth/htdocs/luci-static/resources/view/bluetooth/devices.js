@@ -17,6 +17,12 @@ const getDevices = rpc.declare({
 	expect: { '': {} }
 });
 
+const setDiscoverable = rpc.declare({
+	object: 'luci.bluetooth',
+	method: 'set_discoverable',
+	params: [ 'on', 'seconds' ]
+});
+
 const setPower = rpc.declare({
 	object: 'luci.bluetooth',
 	method: 'set_power',
@@ -80,6 +86,14 @@ function renderStatus(status) {
 		renderHTML = spanTemp.format('red', _('Bluetooth is disabled'));
 	}
 	return renderHTML;
+}
+
+function renderDiscoverable(status) {
+	const spanTemp = '<em><span style="color:%s"><strong>%s</strong></span></em>';
+	if (status.discoverable) {
+		return spanTemp.format('green', _('Discoverable'));
+	}
+	return spanTemp.format('orange', _('Not discoverable'));
 }
 
 function renderBluealsaTooltip(bluealsa) {
@@ -323,6 +337,23 @@ return view.extend({
 					aliasEl.innerText = `${_('Adapter Alias:')} ${status.alias}`;
 				}
 
+				const discoverableEl = document.getElementById('discoverable_status');
+				if (discoverableEl) {
+					discoverableEl.innerHTML = renderDiscoverable(status);
+				}
+
+				const discoverableButtonEl = document.getElementById('discoverable_button');
+				if (discoverableButtonEl) {
+					discoverableButtonEl.className = `cbi-button ${status.discoverable ? 'cbi-button-remove' : 'cbi-button-action'}`;
+					discoverableButtonEl.innerText = status.discoverable ? _('Stop Advertising') : _('Advertise to Phones');
+				}
+
+				// Pre-fill once so later polls do not clobber what the user types.
+				const aliasInput = document.getElementById('bt_alias');
+				if (aliasInput && !aliasInput.value && status.alias && status.alias != 'Unknown') {
+					aliasInput.value = status.alias;
+				}
+
 				const devicesEl = document.getElementById('devices_list');
 				if (devicesEl) {
 					dom.content(devicesEl, renderDevices(devices, view));
@@ -368,6 +399,30 @@ return view.extend({
 			})
 		}, _('Rename Adapter'));
 
+		const durationSelect = E('select', { 'id': 'bt_discoverable_duration', 'style': 'margin-right: 8px;' });
+		[
+			{ value: 60, label: _('1 minute') },
+			{ value: 300, label: _('5 minutes') },
+			{ value: 1800, label: _('30 minutes') }
+		].forEach((entry) => {
+			const option = E('option', { 'value': entry.value }, entry.label);
+			if (entry.value === 300)
+				option.selected = 'selected';
+			durationSelect.appendChild(option);
+		});
+
+		const discoverableButton = E('button', {
+			'id': 'discoverable_button',
+			'class': 'cbi-button',
+			'click': ui.createHandlerFn(this, () => {
+				const seconds = parseInt(document.getElementById('bt_discoverable_duration').value, 10);
+				const enable = !view.__status.discoverable;
+				return setDiscoverable(enable ? 1 : 0, enable ? seconds : 0).then(() => {
+					return view.load().then(view.render.bind(view));
+				});
+			})
+		}, _('Collecting data...'));
+
 		const deviceTable = E('div', { 'id': 'devices_list' }, E('em', {}, _('Collecting data...')));
 		const audioDeviceTable = E('div', { 'id': 'audio_devices_list' }, E('em', {}, _('Collecting data...')));
 
@@ -376,7 +431,8 @@ return view.extend({
 			E('div', { 'class': 'cbi-section' }, [
 				E('p', { id: 'adapter_alias' }, _('Adapter Alias: ...')),
 				E('p', { id: 'service_status' }, _('Collecting data...')),
-				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-top: 12px;' }, [
+				E('p', { id: 'discoverable_status' }, _('Collecting data...')),
+				E('div', { 'style': 'display: flex; justify-content: space-between; align-items: center; margin-top: 12px; flex-wrap: wrap; gap: 8px;' }, [
 					E('div', {}, [
 						powerButton,
 						scanButton
@@ -384,8 +440,16 @@ return view.extend({
 					E('div', {}, [
 						aliasField,
 						aliasButton
+					]),
+					E('div', {}, [
+						durationSelect,
+						discoverableButton
 					])
-				])
+				]),
+				E('p', { 'style': 'font-size: 12px; color: #888; margin-top: 8px;' },
+					_('This router pairs as a peripheral, so a phone finds it only while it is discoverable. ' +
+					  'Use "Advertise to Phones" to make it appear in the phone Bluetooth list for the ' +
+					  'selected duration, then start pairing from the phone.'))
 			]),
 			E('div', { 'class': 'cbi-section' }, [
 				E('h3', {}, _('Discovered & Paired Devices')),
