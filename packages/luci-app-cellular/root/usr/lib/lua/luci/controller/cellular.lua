@@ -45,7 +45,9 @@ local function kvparse(out)
 	return t
 end
 
--- QMI 端口与 ModemManager 有 CID 争用(endpoint hangup), 需要多次重试。
+-- qmicli 必须带 -p（QMI proxy）：直接 open /dev/wwan0qmi0 会从 ModemManager
+-- 手里抢走端口，导致 modem 立即重枚举（实测：无 -p 跑 3 条 → Modem/N → N+1）。
+-- 即便走 proxy，偶发 endpoint hangup 仍需重试兜底。
 -- QMI_FAILED: 一旦某次探测失败（端口阻塞/争用），后续探测直接跳过
 -- （用缓存/-- 兜底），避免页面因多个 qmicli 调用串行超时而假死。
 local qmi_failed = false
@@ -124,7 +126,7 @@ local FIELDS = {
 	-- 卡槽信息：逐行解析，跟踪当前 Slot，读取 Card state / UPIN state
 	local slots = {}
 	local cs = qmicli_retry(
-		"timeout 2 qmicli -d /dev/wwan0qmi0 --uim-get-card-status 2>/dev/null")
+		"timeout 2 qmicli -p -d /dev/wwan0qmi0 --uim-get-card-status 2>/dev/null")
 	if cs then
 		local cur_slot
 		for line in cs:gmatch("[^\n]+") do
@@ -161,7 +163,7 @@ local function collect_signal(has_sim)
 	local cl
 	if has_sim then
 		cl = qmicli_retry(
-			"timeout 2 qmicli -d /dev/wwan0qmi0 --nas-get-cell-location-info 2>/dev/null")
+			"timeout 2 qmicli -p -d /dev/wwan0qmi0 --nas-get-cell-location-info 2>/dev/null")
 	end
 	if cl then
 		d.plmn = cl:match("PLMN:%s+'([^']*)'")
@@ -207,7 +209,7 @@ local function collect_signal(has_sim)
 	local si
 	if has_sim then
 		si = qmicli_retry(
-			"timeout 2 qmicli -d /dev/wwan0qmi0 --nas-get-signal-info 2>/dev/null")
+			"timeout 2 qmicli -p -d /dev/wwan0qmi0 --nas-get-signal-info 2>/dev/null")
 	end
 	if si then
 		d.sig_rssi = si:match("RSSI:%s+'([^']*)'")
@@ -222,7 +224,7 @@ local function collect_signal(has_sim)
 	local bc
 	if has_sim then
 		bc = qmicli_retry(
-			"timeout 2 qmicli -d /dev/wwan0qmi0 --dms-get-band-capabilities 2>/dev/null")
+			"timeout 2 qmicli -p -d /dev/wwan0qmi0 --dms-get-band-capabilities 2>/dev/null")
 	end
 	if bc then
 		local bands = {}
@@ -351,7 +353,7 @@ local function collect(has_sim)
 	local q
 	if has_sim then
 		q = qmicli_retry(
-			"timeout 2 qmicli -d /dev/wwan0qmi0 --nas-get-serving-system 2>/dev/null")
+			"timeout 2 qmicli -p -d /dev/wwan0qmi0 --nas-get-serving-system 2>/dev/null")
 	end
 	if q then
 		local s = q:match("Registration state:%s+'([^']*)'")
@@ -368,7 +370,7 @@ local function collect(has_sim)
 	local b
 	if has_sim then
 		b = qmicli_retry(
-			"timeout 2 qmicli -d /dev/wwan0qmi0 --nas-get-rf-band-info 2>/dev/null")
+			"timeout 2 qmicli -p -d /dev/wwan0qmi0 --nas-get-rf-band-info 2>/dev/null")
 	end
 	if b then
 		local cls = b:match("Active Band Class:%s+'([^']*)'")
