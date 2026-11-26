@@ -265,3 +265,51 @@ msgstr ""
 "本机作为外设配对，只有在可被发现时手机才能找到它。使用「对手机广播」让本机在"
 "所选时长内出现在手机的蓝牙列表中，然后从手机端发起配对。"
 
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:404
+msgid "Bluetooth Voice (Handsfree)"
+msgstr "蓝牙语音（免提）"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:230
+msgid "Audio capability"
+msgstr "音频能力"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:231
+msgid "Handsfree (HFP) call audio only — no A2DP headphone audio"
+msgstr "仅支持免提（HFP）通话音频——不支持 A2DP 耳机音频"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:234
+msgid "Voice service"
+msgstr "语音服务"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:236
+msgid "Running (handsfree calls)"
+msgstr "运行中（免提通话）"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:236
+msgid "Service up, hands-free agent stopped"
+msgstr "服务已启动，免提代理已停止"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:236
+msgid "Not installed (ufi-voice)"
+msgstr "未安装（ufi-voice）"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:246
+msgid "Call headset"
+msgstr "通话耳机"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:251
+msgid "Paired, not connected"
+msgstr "已配对，未连接"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:251
+msgid "Not paired"
+msgstr "未配对"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:253
+msgid "first paired device, no headset configured"
+msgstr "第一个已配对设备（未配置耳机）"
+
+#: htdocs/luci-static/resources/view/bluetooth/devices.js:259
+msgid "No headset configured. Pair one in the device list, then set it on the Phone page."
+msgstr "未配置耳机。请在设备列表中配对一台，然后在「电话」页面设置。"
+

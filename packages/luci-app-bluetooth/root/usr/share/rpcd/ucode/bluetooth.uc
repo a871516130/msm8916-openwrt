@@ -78,9 +78,78 @@ const valid_mac = (mac) => {
 	return (type(mac) == 'string' && match(trim(mac), /^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$/));
 };
 
+// Read a uci value; ufivoice may not be installed, in which case this yields ''.
+const uci_get = (key) => {
+	try {
+		const handle = popen(`uci -q get ${shellquote(key)}`, 'r');
+		if (!handle)
+			return '';
+
+		const out = handle.read('all');
+		handle.close();
+
+		return trim(out);
+	}
+	catch (e) {
+		return '';
+	}
+};
+
+// True when a process by this exact name is running.  pgrep -x is unreliable
+// on this platform and plain pgrep misses processes whose comm differs from
+// their script (python3 -u /usr/sbin/ufi-voiced).  Match the full command line
+// with the first character bracketed, so the shell wrapper that runs this very
+// pgrep does not match itself.
+const running = (name) => {
+	const n = `${name}`;
+	const pat = length(n) > 0 ? ('[' + substr(n, 0, 1) + ']' + substr(n, 1)) : n;
+
+	try {
+		const handle = popen(`pgrep -f ${shellquote(pat)} >/dev/null 2>&1 && echo 1 || echo 0`, 'r');
+		if (!handle)
+			return false;
+
+		const out = trim(handle.read('all'));
+		handle.close();
+
+		return out === '1';
+	}
+	catch (e) {
+		return false;
+	}
+};
+
+// The WCNSS controller on this platform exposes Handsfree Audio Gateway only:
+// call audio goes hfp-ag -> SCO -> modem DSP, with no A2DP and no bluealsa.  The
+// frontend then shows the call headset instead of A2DP codec/volume controls.
+// If a build ever ships bluealsa, capability flips to 'a2dp' automatically.
+const audio_capability = () => {
+	try {
+		const handle = popen('command -v bluealsa >/dev/null 2>&1 && echo a2dp || echo hfp', 'r');
+		if (!handle)
+			return 'hfp';
+
+		const out = trim(handle.read('all'));
+		handle.close();
+
+		return out === 'a2dp' ? 'a2dp' : 'hfp';
+	}
+	catch (e) {
+		return 'hfp';
+	}
+};
+
 const methods = {
 	get_status: {
 		call: function() {
+			// The Bluetooth audio reality on this platform (see audio_capability).
+			const audio = {
+				capability: audio_capability(),
+				hfp_ag: running('hfp-ag'),
+				ufivoiced: running('ufi-voiced'),
+				headset_mac: uci_get('ufivoice.main.bt_headset')
+			};
+
 			const output = run_btctl('show');
 			if (!output) {
 				return {
@@ -90,7 +159,8 @@ const methods = {
 					alias: 'Unknown',
 					discoverable: false,
 					pairable: false,
-					discovering: false
+					discovering: false,
+					audio: audio
 				};
 			}
 
@@ -111,7 +181,8 @@ const methods = {
 				alias: parse_value(/Alias:\s*([^\n]+)/) || 'Unknown',
 				discoverable: parse_bool(/Discoverable:\s*([a-z]+)/),
 				pairable: parse_bool(/Pairable:\s*([a-z]+)/),
-				discovering: parse_bool(/Discovering:\s*([a-z]+)/)
+				discovering: parse_bool(/Discovering:\s*([a-z]+)/),
+				audio: audio
 			};
 		}
 	},

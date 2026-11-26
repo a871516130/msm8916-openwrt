@@ -305,6 +305,75 @@ function renderAudioDevices(devices, view) {
 	]);
 }
 
+// This platform has no A2DP/bluealsa: its Bluetooth audio is Handsfree (HFP)
+// call voice routed hfp-ag -> SCO -> modem DSP.  Show the real audio path and
+// the headset that carries calls instead of A2DP codec/volume controls.
+function renderVoiceDevices(devices, audio) {
+	const findDevice = (mac) => {
+		for (let i = 0; i < devices.length; i++) {
+			if (devices[i].mac === mac)
+				return devices[i];
+		}
+		return null;
+	};
+
+	const firstPaired = () => {
+		for (let i = 0; i < devices.length; i++) {
+			if (devices[i].paired)
+				return devices[i];
+		}
+		return null;
+	};
+
+	const row = (label, valueEl) => E('div', { 'class': 'cbi-value' }, [
+		E('span', { 'class': 'cbi-value-label' }, label),
+		E('div', { 'class': 'cbi-value-field' }, valueEl)
+	]);
+
+	const items = [];
+
+	items.push(row(_('Audio capability'),
+		_('Handsfree (HFP) call audio only — no A2DP headphone audio')));
+
+	items.push(row(_('Voice service'),
+		audio.ufivoiced
+			? (audio.hfp_ag ? _('Running (handsfree calls)') : _('Service up, hands-free agent stopped'))
+			: _('Not installed (ufi-voice)')));
+
+	let headsetMac = audio.headset_mac;
+	let headsetDev = null;
+	let fallback = false;
+
+	if (headsetMac) {
+		headsetDev = findDevice(headsetMac);
+	} else {
+		const paired = firstPaired();
+		if (paired) {
+			headsetMac = paired.mac;
+			headsetDev = paired;
+			fallback = true;
+		}
+	}
+
+	if (headsetMac) {
+		const connected = headsetDev && headsetDev.connected;
+		const paired = headsetDev && headsetDev.paired;
+		const stateEl = E('em', { 'style': 'color: ' + (connected ? 'green' : paired ? 'orange' : 'red') + ';' },
+			' \u2014 ' + (connected ? _('Connected') : paired ? _('Paired, not connected') : _('Not paired')));
+
+		items.push(row(_('Call headset'), [
+			headsetMac,
+			fallback ? E('em', {}, ' (' + _('first paired device, no headset configured') + ')') : null,
+			stateEl
+		]));
+	} else {
+		items.push(row(_('Call headset'),
+			E('em', {}, _('No headset configured. Pair one in the device list, then set it on the Phone page.'))));
+	}
+
+	return E('div', {}, items);
+}
+
 return view.extend({
 	__status: {},
 
@@ -361,7 +430,17 @@ return view.extend({
 
 				const audioDevicesEl = document.getElementById('audio_devices_list');
 				if (audioDevicesEl) {
-					dom.content(audioDevicesEl, renderAudioDevices(devices, view));
+					const audio = status.audio || {};
+					dom.content(audioDevicesEl, audio.capability === 'a2dp'
+						? renderAudioDevices(devices, view)
+						: renderVoiceDevices(devices, audio));
+				}
+
+				const audioTitleEl = document.getElementById('audio_section_title');
+				if (audioTitleEl) {
+					audioTitleEl.innerText = (status.audio && status.audio.capability === 'a2dp')
+						? _('Connected Audio Devices')
+						: _('Bluetooth Voice (Handsfree)');
 				}
 			});
 		});
@@ -456,7 +535,7 @@ return view.extend({
 				deviceTable
 			]),
 			E('div', { 'class': 'cbi-section' }, [
-				E('h3', {}, _('Connected Audio Devices')),
+				E('h3', { id: 'audio_section_title' }, _('Bluetooth Voice (Handsfree)')),
 				audioDeviceTable
 			])
 		]);
