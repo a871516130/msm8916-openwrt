@@ -11,7 +11,7 @@
 #
 # With ntfy_click set, the message carries that link as ntfy's Click target, so
 # tapping the notification opens it instead of the ntfy app. Point it at a URI
-# your softphone registers (sip:100@192.168.8.1, linphone:, zoiper:, ...) and
+# your softphone registers (sip:100@192.168.1.1, linphone:, zoiper:, ...) and
 # the tap both opens the client and starts the re-registration the retrying
 # Dial needs. It has no effect if the app does not claim that URI.
 #

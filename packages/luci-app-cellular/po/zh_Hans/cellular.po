@@ -5,8 +5,8 @@ msgstr ""
 "Language: zh_Hans\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-msgid "Cellular Network"
-msgstr "蜂窝网络"
+msgid "Cellular Network (Advanced)"
+msgstr "蜂窝网络(高级)"
 
 msgid "Modem"
 msgstr "Modem"

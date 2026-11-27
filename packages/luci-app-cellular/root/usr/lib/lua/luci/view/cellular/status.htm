@@ -112,37 +112,9 @@
                     .. "registration and base-station data were skipped."))
                 .. "</div>"
         end
-        h3(translate("Modem"))
+        -- 运营商配置(APN)：modemmanager 页只读展示，这里保留为可操作的下拉
+        h3(translate("Carrier configuration"))
         tbl()
-        row(translate("IMEI"), d.imei, true)
-        row(translate("Device identifier"), d.did, true)
-        row(translate("Manufacturer"), d.mfr)
-        row(translate("Model"), d.model)
-        row(translate("Revision"), d.rev)
-        row(translate("DBUS path"), d.dbus, true)
-        endtbl()
-
-        h3(translate("Status"))
-        tbl()
-        row(translate("Modem state"), d.state)
-        row(translate("Power state"), d.power)
-        -- 失败原因：合并 state-failed-reason 与网络拒绝信息（用户要求显示全部）
-        local fr = d.state_reason or "--"
-        if d.reject and d.reject ~= "--" and d.reject ~= "" then
-            local rp = { "网络拒绝: " .. d.reject }
-            if d.reject_opid and d.reject_opid ~= "--" and d.reject_opid ~= "" then
-                rp[#rp + 1] = "opid " .. d.reject_opid
-            end
-            if d.reject_opname and d.reject_opname ~= "--" and d.reject_opname ~= "" then
-                rp[#rp + 1] = d.reject_opname
-            end
-            if d.reject_rat and d.reject_rat ~= "--" and d.reject_rat ~= "" then
-                rp[#rp + 1] = d.reject_rat
-            end
-            fr = (fr ~= "--" and (fr .. " / ") or "") .. table.concat(rp, " / ")
-        end
-        row(translate("Failed reason"), fr)
-        -- 运营商配置(APN)：值即下拉（默认 default/auto），onchange 自动提交
         do
             local cur_carrier = d.force_carrier or "auto"
             out[#out + 1] = "<tr><th>" .. esc(translate("Carrier configuration")) .. "</th><td>"
@@ -159,45 +131,13 @@
             end
             out[#out + 1] = "</select></form></td></tr>"
         end
-        row(translate("Own numbers"), d.own_numbers)
         endtbl()
 
-        if not d.nosim then
-        h3(translate("Network registration"))
-        tbl()
-        row(translate("Operator"), d.operator)
-        row(translate("Operator code"), d.opcode, true)
-        row(translate("Registration state"), d.reg)
-        row(translate("Packet service state"), d.ps)
-        row(translate("Access technologies"), d.accesstech)
-        row(translate("APN"), d.apn, true)
-        row(translate("UE mode operation"), d.ue_mode)
-        row(translate("MiCo mode"), d.mico)
-        row(translate("DRX cycle"), d.drx)
+        -- 网络注册/信号质量/QMI 射频层已由 luci-proto-modemmanager 的
+        -- "Cellular Modem" 页展示，本页不重复显示。
+        -- Radio bands: modemmanager 页未展示频段，本页保留。
 
-        local sig = tonumber(d.signal) or 0
-        if sig > 100 then sig = 100 end
-        local barcls = (sig <= 0 and "nosig") or ((sig < 50 and "low") or "")
-        local kind = (d.signal_recent == "yes") and translate("recent")
-            or translate("average")
-        row(translate("Signal quality"), nil, nil,
-            "<span class=\"mmm-bar " .. barcls .. "\">"
-            .. "<span style=\"width: " .. sig .. "%\"></span></span>"
-            .. "<span class=\"mmm-sig-text\">" .. sig .. "% (" .. kind .. ")</span>")
-        endtbl()
-        end -- not d.nosim: 无 SIM 时注册数据未读取，隐藏整块
-
-        if d.reject and d.reject ~= "--" and d.reject ~= "" then
-            h3(translate("Network rejection"))
-            tbl()
-            row(translate("Rejection error"), d.reject)
-            row(translate("Rejected operator id"), d.reject_opid, true)
-            row(translate("Rejected operator name"), d.reject_opname)
-            row(translate("Rejected access technology"), d.reject_rat)
-            endtbl()
-        end
-
-        if d.serving_reg or d.band or d.current_bands or d.supported_bands then
+        if d.band or d.current_bands or d.supported_bands then
             h3(translate("Radio bands"))
             tbl()
             if d.band then
@@ -219,32 +159,26 @@
             endtbl()
         end
 
-        if not d.nosim and d.serving_reg then
+        -- QMI 射频层：modemmanager 页(上游)只有 mmcli Cell Location，
+        -- 没有服务注册状态/漫游，本页补上
+        if d.serving_reg or d.roaming then
             h3(translate("QMI radio layer"))
             tbl()
             row(translate("Serving registration state"), d.serving_reg)
             if d.roaming then
                 row(translate("Roaming status"), d.roaming)
             end
-            if d.plmn_mcc then
-                row(translate("Current PLMN"),
-                    (d.plmn_mcc or "") .. (d.plmn_mnc or ""), true)
-            end
             endtbl()
         end
     end
 
-    -- 基站信令（服务小区/邻区 + 信号强度）
-    if not d.nosim and d.cell and (d.cell.plmn or d.cell.tac or d.cell.gci or
+    -- 基站信令（服务小区/邻区 + 信号强度）。
+    -- 不重复 PLMN/TAC：modemmanager 页(上游)的 Cell Location 已有 MCC/MNC/TAC，
+    -- 本页只显示上游没有的（GCI/EARFCN/band/serving cell/RSRP/RSRQ/SNR/邻区）。
+    if not d.nosim and d.cell and (d.cell.gci or d.cell.earfcn or d.cell.serving_cell or
                    (d.cell.cells and #d.cell.cells > 0)) then
         h3(translate("Base station signaling"))
         tbl()
-        if d.cell.plmn then
-            row(translate("PLMN"), d.cell.plmn, true)
-        end
-        if d.cell.tac then
-            row(translate("Tracking area code"), d.cell.tac, true)
-        end
         if d.cell.gci then
             row(translate("Global cell ID"), d.cell.gci, true)
         end
@@ -286,12 +220,11 @@
         end
     end
 
-    -- SIM 卡信息
+    -- SIM 卡槽信息。不重复 ICCID/IMSI：modemmanager 页(上游)的 SIMs
+    -- 已有每个 SIM 的 ICCID/IMSI，本页只显示上游没有的（活动卡槽 + 卡槽状态）。
     h3(translate("SIM card"))
     tbl()
     row(translate("Active SIM slot"), d.sim and d.sim.select or "--", true)
-    row(translate("ICCID"), d.sim and d.sim.iccid or "--", true)
-    row(translate("IMSI"), d.sim and d.sim.imsi or "--", true)
     endtbl()
     if d.sim and d.sim.slots and #d.sim.slots > 0 then
         tbl()

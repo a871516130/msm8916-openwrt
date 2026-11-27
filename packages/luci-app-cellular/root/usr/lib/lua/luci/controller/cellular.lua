@@ -13,10 +13,16 @@ function index()
 	-- 独立节点路径（不与 luci-proto-modemmanager 的菜单/控制器冲突）
 	-- 标题由 _() 提供，经 po/zh_Hans 译为"蜂窝网络"
 	entry({"admin", "status", "cellular"}, call("action_status"),
-	      _("Cellular Network"), 10)
+	      _("Cellular Network (Advanced)"), 10)
 end
 
-local DEVICE = "any"
+-- modem 设备名：与 luci-proto-modemmanager(modemstatus.lua)、
+-- msm89xx modemmanager.sh.hotfix、qcom-carrier-autocfg 保持一致，
+-- 都是 "qcom-soc"。不能写 "any"：MM 可能枚举出多个 modem 对象
+-- （如 /Modem/7 与 /Modem/13），"any" 会选中第一个任意对象，
+-- 导致读到无 IMEI 的"幽灵" modem（IMEI 恒 "--"）、与数据连接/
+-- modemmanager 页读到不同 modem。用 qcom-soc 固定读同一个真 modem。
+local DEVICE = "qcom-soc"
 local SIM_TOOL = "/usr/sbin/sim-select"
 local IMEI_TOOL = "/usr/sbin/imei-tool"
 local FORCE_CARRIER = "/etc/qcom-carrier-autocfg/force-carrier"
@@ -64,35 +70,13 @@ local function qmicli_retry(cmd, tries)
 	return nil
 end
 
+-- 只保留本页仍展示的字段；其余（IMEI/设备标识/制造商/状态/电源/
+-- 注册状态/信号质量/接入技术/APN/UE模式/MiCo/DRX/网络拒绝/运营商配置/
+-- 本机号码/DBUS 路径）已由 luci-proto-modemmanager 的 "Cellular Modem" 页
+-- 展示，本页不再收集（避免两个页面重复、减少 MM 解析开销）。
 local FIELDS = {
-	{ "modem.3gpp.imei",                              "imei" },
-	{ "modem.3gpp.operator-name",                     "operator" },
-	{ "modem.3gpp.operator-code",                     "opcode" },
-	{ "modem.3gpp.registration-state",                "reg" },
-	{ "modem.3gpp.packet-service-state",              "ps" },
-	{ "modem.3gpp.network-rejection-error",           "reject" },
-	{ "modem.3gpp.network-rejection-operator-id",     "reject_opid" },
-	{ "modem.3gpp.network-rejection-operator-name",   "reject_opname" },
-	{ "modem.3gpp.network-rejection-access-technology", "reject_rat" },
-	{ "modem.3gpp.eps.initial-bearer.settings.apn",    "apn" },
-	{ "modem.3gpp.eps.ue-mode-operation",             "ue_mode" },
-	{ "modem.3gpp.5gnr.registration-settings.mico-mode", "mico" },
-	{ "modem.3gpp.5gnr.registration-settings.drx-cycle", "drx" },
-	{ "modem.generic.state",                           "state" },
-	{ "modem.generic.state-failed-reason",            "state_reason" },
-	{ "modem.generic.power-state",                    "power" },
-	{ "modem.generic.signal-quality.value",           "signal" },
-	{ "modem.generic.signal-quality.recent",          "signal_recent" },
 	{ "modem.generic.current-bands",                  "current_bands" },
 	{ "modem.generic.supported-bands",                "supported_bands" },
-	{ "modem.generic.access-technologies",            "accesstech" },
-	{ "modem.generic.manufacturer",                   "mfr" },
-	{ "modem.generic.model",                          "model" },
-	{ "modem.generic.revision",                       "rev" },
-	{ "modem.generic.device-identifier",              "did" },
-	{ "modem.generic.carrier-configuration",          "carrier_cfg" },
-	{ "modem.generic.own-numbers",                    "own_numbers" },
-	{ "modem.dbus-path",                               "dbus" },
 }
 
 	local function collect_sim()
@@ -105,10 +89,10 @@ local FIELDS = {
 	-- 主 SIM 路径索引也随重枚举变化，故每次重新获取。
 	local function get_sim_ident()
 		for _ = 1, 10 do
-			local mpath = run("timeout 6 mmcli -m any 2>/dev/null")
+			local mpath = run("timeout 6 mmcli -m " .. DEVICE .. " 2>/dev/null")
 			local simidx = mpath and mpath:match("SIM%/(%d+)")
 			if simidx then
-				local so = run("timeout 6 mmcli -m any --sim " .. simidx .. " -K 2>/dev/null")
+				local so = run("timeout 6 mmcli -m " .. DEVICE .. " --sim " .. simidx .. " -K 2>/dev/null")
 				if so then
 					local id = so:match("sim%.properties%.iccid%s*:%s*(%S+)")
 					local imsi = so:match("sim%.properties%.imsi%s*:%s*(%S+)")
@@ -196,8 +180,12 @@ local function collect_signal(has_sim)
 				if v then cur.earfcn = v end
 				v = line:match("EARFCN:%s+'([^']*)'")
 				if v then cur.earfcn = v end
-				-- 退出当前 Cell 块：遇到下一个顶层字段
-				if line:match("^%s+[A-Z][A-Za-z ]+:%s") and not line:match("Cell %[") then
+				-- 退出当前 Cell 块：遇到下一个顶层字段。
+				-- qmicli 顶层字段缩进 1 个 tab（\tPLMN:、\tServing Cell ID:），
+				-- 小区子字段缩进 2 个 tab（\t\tPhysical Cell ID:、\t\tRSRP:）。
+				-- 用恰好 1 个空白字符区分二者，否则 \t\tPhysical Cell ID: 会被
+				-- 误判为顶层字段，导致该邻区只解析出 PCI、RSRP/RSRQ/RSSI 全部丢失。
+				if line:match("^%s[A-Z][A-Za-z ]+:%s") and not line:match("Cell %[") then
 					cur = nil
 				end
 			end
@@ -349,7 +337,9 @@ local function collect(has_sim)
 	local sb = band_array("modem.generic.supported-bands")
 	if sb then d.supported_bands = sb end
 
-	-- 注册状态：需 SIM 才能注册
+	-- 服务注册/漫游：qmicli serving-system。
+	-- modemmanager 页(上游)只显示 mmcli 的 Cell Location(CID/LAC/MCC/MNC/TAC)，
+	-- 没有服务注册状态/漫游，故本页补上（不重复 PLMN，上游已有 MCC/MNC）。
 	local q
 	if has_sim then
 		q = qmicli_retry(
@@ -360,10 +350,6 @@ local function collect(has_sim)
 		if s then d.serving_reg = s end
 		s = q:match("Roaming status:%s+'([^']*)'")
 		if s then d.roaming = s end
-		s = q:match("Current PLMN:") and q:match("MCC:%s+'([^']*)'")
-		if s then d.plmn_mcc = s end
-		s = q:match("MNC:%s+'([^']*)'")
-		if s then d.plmn_mnc = s end
 	end
 
 	-- 频段/信道：需 SIM

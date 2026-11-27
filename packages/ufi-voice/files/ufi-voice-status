@@ -81,13 +81,18 @@ add_sip() {
 
 sip_entry() {
 	local num="$1" line st host
+	# `pjsip show contacts` 的数据行形如
+	#   100/sip:100@192.168.1.1:5060  100  0x..  Avail  0.001  ...
+	# 即 $1=联系名(<号码>/sip:...), $2=Aor, $3=Hash, $4=Status。
+	# 旧写法用 /^[[:space:]]*Contact:/ 匹配（数据行并不以 "Contact:" 开头）
+	# 且取 $2(Aor) 而非 $1(联系名)，导致 Registered 恒显 "down"、host 恒空。
 	line=$(printf '%s\n' "$contacts" | awk -v n="$num" '
-		/^[[:space:]]*Contact:/ && !/</ {
-			uri = $2
-			split(uri, a, "/")
-			if (a[1] != n) next
-			sub(/.*@/, "", a[2])
-			split(a[2], h, ":")
+		/\/sip:/ && !/</ {
+			if ($1 !~ "^" n "/") next
+			hostpart = $1
+			sub(/^[^\/]*\//, "", hostpart)
+			sub(/.*@/, "", hostpart)
+			split(hostpart, h, ":")
 			print $4, h[1]
 			exit
 		}')

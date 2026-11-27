@@ -1300,7 +1300,7 @@ const Colorizer = {
 			modified = true;
 		}
 
-		// 8. IP Addresses (e.g. "192.168.8.1" or "10.0.0.1/24")
+		// 8. IP Addresses (e.g. "192.168.1.1" or "10.0.0.1/24")
 		if (/\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/\d{1,2})?\b/.test(result)) {
 			result = result.replace(/\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?:\/\d{1,2})?\b/g, (match) => {
 				return `<span class="badge-colored badge-ip"><span class="ip-icon">🌐</span> ${match}</span>`;
