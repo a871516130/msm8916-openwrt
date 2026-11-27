@@ -28,6 +28,7 @@ return view.extend({
 	load: function() {
 		return Promise.all([
 			uci.load('ufivoice'),
+			uci.load('network'),
 			L.resolveDefault(fs.exec('/usr/sbin/ufi-voice-status', []), null)
 		]);
 	},
@@ -44,6 +45,10 @@ return view.extend({
 		}
 
 		var m, s, o;
+
+		// 设备自身的 LAN IP：软电话注册时连这个地址。动态读 network.lan.ipaddr，
+		// 用户改了 LAN IP 则提示随之更新；读不到时回退默认网关地址。
+		var lanip = uci.get('network', 'lan', 'ipaddr') || '192.168.1.1';
 
 		m = new form.Map('ufivoice', _('Phone'),
 			_('Calls are carried by the mobile network (VoLTE) and handed to a Bluetooth ' +
@@ -177,12 +182,13 @@ return view.extend({
 
 		o = s.option(form.Value, 'ntfy_click', _('Open on tap'),
 			_('A link to open when the notification is tapped, instead of the ntfy ' +
-			  'app. Point it at a URI your softphone registers — for example ' +
-			  '<code>sip:100@192.168.1.1</code>, or the app\'s own scheme such as ' +
+			  'app. Point it at a URI your softphone registers — for example ') +
+			'<code>sip:100@' + lanip + '</code>' +
+			_(", or the app's own scheme such as " +
 			  '<code>linphone:</code> or <code>zoiper:</code>. One tap then opens the ' +
 			  'client and re-registers it. Does nothing if no app claims that URI. ' +
 			  'Leave empty to keep opening the ntfy app.'));
-		o.placeholder = 'sip:100@192.168.1.1';
+		o.placeholder = 'sip:100@' + lanip;
 		o.depends('notify', '1');
 
 		o = s.option(form.Value, 'ntfy_password', _('Topic password'),

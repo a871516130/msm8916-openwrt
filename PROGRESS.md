@@ -37,6 +37,13 @@
 ### 菜单命名（用户决策）
 - 两个页面原同名同序 "Cellular Network"（Status 菜单）。已改 cellular 标题为 **"Cellular Network (Advanced)"**（中文"蜂窝网络(高级)"），与 modemmanager 页（上游 "Cellular Network"）区分。
 
+### ufi-voice SIP LAN IP 动态化（用户决策：只做前端）
+- 背景：ufi-voice SIP 功能本身不依赖 LAN IP（asterisk 传输绑 `0.0.0.0:5060`、AMI 绑 `127.0.0.1`）；192.168.1.1 只出现在 LuCI 页面提示/示例（ntfy_click placeholder + 文案）。
+- 已改 `config.js`：`load()` 加 `uci.load('network')`，`render()` 动态读 `network.lan.ipaddr`（回退 `192.168.1.1`），ntfy_click 的 placeholder 与示例文案动态插入实际 IP（`sip:100@<实际IP>`）。
+- 同步更新 `ufi-voice.po`：ntfy_click 文案拆分为两段 msgid/msgstr（因动态插入 IP）。
+- 镜像内验证：config.js 含 `uci.load('network')` + `lanip=uci.get(...)` ✓；lmo 含拆分后中文 ✓。
+- **新刷机包**：`/tmp/opencode/mf32lt-flash-final.tar.gz`（166,246,086 B，sha256 `5bb4d87e1cb9c18c039b9499064a754b971f93271bb33c478bfcccc70e337020`）。
+
 ## 2026-11-26 会话：Asterisk / 全量编译 / 刷机包
 
 ### Asterisk 未运行根因（已定位）
