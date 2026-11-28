@@ -116,15 +116,20 @@ endef
 
 define Package/ufi-voice-asterisk/install
 	$(INSTALL_DIR) $(1)/etc/uci-defaults $(1)/usr/sbin \
-		$(1)/usr/share/asterisk/sounds
+		$(1)/usr/share/asterisk/sounds/zh-cn
 	$(INSTALL_BIN) ./files/91-ufi-voice-asterisk $(1)/etc/uci-defaults/
 	$(INSTALL_BIN) ./files/ufi-voice-asterisk-apply $(1)/usr/sbin/
-	# Chinese (zh-CN) prompt recordings for voicemail and the IVR menu,
-	# replacing the English ones at the same path. Only the prompts the
-	# Asterisk voicemail application actually references are shipped
-	# (see app_voicemail.c) plus the IVR greeting and the beep; the rest
-	# of the stock 593-prompt Chinese set is intentionally not installed.
-	$(INSTALL_DATA) ./files/sounds/*.gsm $(1)/usr/share/asterisk/sounds/
+	# Chinese (zh-CN) prompt recordings for voicemail and the IVR menu.
+	# They live in the zh-cn language subdirectory, which Asterisk looks in
+	# first when the channel/mailbox language is zh-cn; the English prompts
+	# at the sounds root (owned by asterisk-sounds / asterisk-app-voicemail)
+	# are left untouched, so there is no package file conflict.
+	#
+	# Only the prompts the Asterisk voicemail application actually reaches
+	# on the core paths are shipped (see app_voicemail.c) plus the IVR
+	# greeting and the beep; the rest of the stock 593-prompt Chinese set
+	# (confbridge/queue/agent/dir/demo ...) is intentionally not installed.
+	$(INSTALL_DATA) ./files/sounds/*.gsm $(1)/usr/share/asterisk/sounds/zh-cn/
 endef
 
 $(eval $(call BuildPackage,ufi-voice))

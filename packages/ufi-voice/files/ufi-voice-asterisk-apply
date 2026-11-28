@@ -118,6 +118,9 @@ direct_media=no
 rtp_symmetric=yes
 force_rport=yes
 rewrite_contact=yes
+; Chinese prompts: this makes the channel language zh-cn, so Playback and
+; the voicemail application look in /usr/share/asterisk/sounds/zh-cn/ first.
+language=zh-cn
 
 [aor](!)
 type=aor
@@ -162,22 +165,26 @@ EOT
 
 # --- IVR greeting ----------------------------------------------------------
 #
-# The IVR menu plays the recording "ufi-phones". No asterisk sound package
-# provides one, so take a stock recording that asks the caller for an
-# extension number and make it available under that name. A recording that
-# already exists is left alone - it may be a user replacement.
+# The IVR menu plays the recording "ufi-phones" from the Chinese (zh-cn)
+# sound directory. The Chinese prompt set shipped by this package lives in
+# /usr/share/asterisk/sounds/zh-cn/; install_ivr_greeting picks the stock
+# IVR main recording there and makes it available as ufi-phones in the same
+# directory, so Playback(ufi-phones) on a zh-cn channel finds it. A recording
+# that already exists is left alone - it may be a user replacement.
 #
 # Only .gsm is usable here: this build ships format_gsm.so and no other
 # sound format module, and codec_gsm turns gsm into the ulaw/alaw the
 # phones negotiate.
 
 install_ivr_greeting() {
-	local src dst
-	dst=/usr/share/asterisk/sounds/ufi-phones.gsm
+	local src dst langdir
+	langdir=/usr/share/asterisk/sounds/zh-cn
+	dst="$langdir/ufi-phones.gsm"
 	[ -f "$dst" ] && return 0
+	[ -d "$langdir" ] || return 1
 	for src in basic-pbx-ivr-main vm-starmain vm-intro; do
-		if [ -f "/usr/share/asterisk/sounds/$src.gsm" ]; then
-			cp -f "/usr/share/asterisk/sounds/$src.gsm" "$dst" &&
+		if [ -f "$langdir/$src.gsm" ]; then
+			cp -f "$langdir/$src.gsm" "$dst" &&
 				chown asterisk:asterisk "$dst" 2>/dev/null
 			return 0
 		fi
@@ -298,6 +305,8 @@ exten => _*97[0-9].,1,Answer()
 ; WaitExten() leaves EXTEN untouched when the caller just waits, so EXTEN is
 ; still the entry extension (*98 or s) on timeout - route that to hangup,
 ; otherwise the call would loop back into the menu forever.
+; The channel language is zh-cn already: it is set on the PJSIP endpoint
+; ([phone](!) language=zh-cn), so Playback looks in sounds/zh-cn/ first.
 exten => *98,1,Answer()
  same => n(top),Playback(ufi-phones)
   same => n,WaitExten(30)
@@ -348,7 +357,10 @@ EOT
 		vm_n=$((vm_n + 1))
 		# 100 -> 1000, 101 -> 1001, ...: the stock voicemail layout.
 		pw=$((1000 + vm_n - 1))
-		echo "$num => $pw,Extension $num,"
+		# language=zh-cn makes the voicemail prompts come from
+		# /usr/share/asterisk/sounds/zh-cn/ (the Chinese recordings shipped
+		# by this package) instead of the English ones in the sounds root.
+		echo "$num => $pw,Extension $num,,,language=zh-cn"
 	}
 	echo "[main]"
 	config_load ufivoice
