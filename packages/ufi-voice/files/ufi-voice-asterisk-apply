@@ -2,9 +2,9 @@
 # ufi-voice-asterisk-apply - write the Asterisk configuration from ufivoice uci.
 #
 # The SIP accounts live in ufivoice uci (config phone). pjsip.conf,
-# extensions.conf and manager.conf are GENERATED: edit the accounts in the
-# LuCI phone page (Services -> Phone) or with uci, never in the files, and run
-# this script afterwards.
+# extensions.conf, manager.conf and voicemail.conf are GENERATED: edit the
+# accounts in the LuCI phone page (Services -> Phone) or with uci, never in the
+# files, and run this script afterwards.
 #
 # Idempotent. Runs at first install (from 91-ufi-voice-asterisk) and from the
 # phone page's Apply button.
@@ -93,7 +93,7 @@ ami=$(uci -q get ufivoice.main.ami_secret)
 [ -n "$(uci -q changes ufivoice)" ] && uci -q commit ufivoice
 
 # keep the distribution's files once, then replace them
-for f in pjsip.conf extensions.conf manager.conf; do
+for f in pjsip.conf extensions.conf manager.conf voicemail.conf; do
 	[ -f /etc/asterisk/$f ] && [ ! -f /etc/asterisk/$f.orig ] &&
 		mv /etc/asterisk/$f /etc/asterisk/$f.orig
 done
@@ -160,6 +160,34 @@ EOT
 	config_foreach gen_endpoint phone
 } > /etc/asterisk/pjsip.conf
 
+# --- IVR greeting ----------------------------------------------------------
+#
+# The IVR menu plays the recording "ufi-phones". No asterisk sound package
+# provides one, so take a stock recording that asks the caller for an
+# extension number and make it available under that name. A recording that
+# already exists is left alone - it may be a user replacement.
+#
+# Only .gsm is usable here: this build ships format_gsm.so and no other
+# sound format module, and codec_gsm turns gsm into the ulaw/alaw the
+# phones negotiate.
+
+install_ivr_greeting() {
+	local src dst
+	dst=/usr/share/asterisk/sounds/ufi-phones.gsm
+	[ -f "$dst" ] && return 0
+	for src in basic-pbx-ivr-main vm-starmain vm-intro; do
+		if [ -f "/usr/share/asterisk/sounds/$src.gsm" ]; then
+			cp -f "/usr/share/asterisk/sounds/$src.gsm" "$dst" &&
+				chown asterisk:asterisk "$dst" 2>/dev/null
+			return 0
+		fi
+	done
+	return 1
+}
+
+install_ivr_greeting ||
+	echo "ufi-voice-asterisk-apply: warning: no IVR greeting recording found" >&2
+
 # --- extensions.conf -----------------------------------------------------
 
 {
@@ -176,10 +204,27 @@ EOT
 	gen_exten() {
 		local num
 		config_get num "$1" number
-		[ -n "$num" ] && echo "exten => $num,1,Dial(PJSIP/$num,30)"
+		[ -z "$num" ] && return 0
+		# Ring this phone; an unanswered (or unregistered) phone falls through to
+		# its mailbox.  voicemail() takes the mailbox as its FIRST argument and
+		# parses the second as app options, so the context must ride on the
+		# mailbox with the "@" separator: voicemail(101@main). A second
+		# argument instead turned "101" into option letters ("Unrecognized
+		# option") and left the mailbox empty.
+		echo "exten => $num,1,Dial(PJSIP/$num,30)"
+		echo " same => n,GotoIf(\$[\"\${DIALSTATUS}\" != \"ANSWER\"]?vm)"
+		echo " same => n(vm),voicemail($num@main)"
+		echo " same => n,Hangup()"
 	}
 	config_load ufivoice
 	config_foreach gen_exten phone
+
+	# *97<mailbox> -> voicemail, *98 -> IVR. Exact / more specific extensions beat
+	# the _[0-9+*#]. catch-all below, so they never leave for the mobile network.
+	cat <<'EOT'
+exten => *98,1,Goto(ivr-menu,*98,1)
+exten => _*97[0-9].,1,Goto(voicemail-in,${EXTEN},1)
+EOT
 
 	cat <<'EOT'
 ; everything else goes out through the mobile network (ufi-voiced)
@@ -225,8 +270,97 @@ EOT
  same => n,Wait(2)
  same => n,GotoIf($[$[${EPOCH} - ${UFI_T0}] < 45]?retry)
  same => n(done),Hangup()
+
+; ---- voicemail access (*97<mailbox>) and the IVR demo (*98) -------------
+; *97100 reaches mailbox 100, *97101 reaches mailbox 101. Mailboxes live in
+; the "main" context of voicemail.conf (see below), attached with "@".
+; Retrieving uses VoiceMailMain - the "vmmain" alias is not registered by
+; app_voicemail, only "VoiceMail" and "VoiceMailMain" are.
+[voicemail-in]
+exten => _*97[0-9].,1,Answer()
+ same => n,VoiceMailMain(${EXTEN:3}@main)
+ same => n,Hangup()
+
+[ivr-menu]
+; *98 is the IVR menu: play the ufi-phones greeting, wait for digits, then
+; route them into ufi-phones - so 100/101 reach those phones (or their
+; mailbox when the client is offline) and anything else leaves for the
+; mobile network. "*" repeats the menu.
+;
+; IVRDemo() was used here before, but in asterisk 23 it is a skeleton
+; application: it ignores its filename argument for the greeting and plays
+; hardcoded "demo-congrats"/"demo-instruct", which this build does not ship.
+; The menu was silent. Playback()+WaitExten() has no such dependencies.
+;
+; WaitExten() leaves EXTEN untouched when the caller just waits, so EXTEN is
+; still the entry extension (*98 or s) on timeout - route that to hangup,
+; otherwise the call would loop back into the menu forever.
+exten => *98,1,Answer()
+ same => n(top),Playback(ufi-phones)
+  same => n,WaitExten(30)
+  same => n,GotoIf($["${EXTEN}" = "*"]?top)
+  same => n,GotoIf($["${EXTEN}" = "*98"]?end)
+  same => n,GotoIf($["${EXTEN}" = "s"]?end)
+  same => n,Goto(ufi-phones,${EXTEN},1)
+ same => n(end),Hangup()
+exten => s,1,Answer()
+ same => n,Goto(*98,1)
 EOT
 } > /etc/asterisk/extensions.conf
+
+# --- voicemail.conf ------------------------------------------------------
+#
+# The distribution ships a voicemail.conf whose mailboxes are commented out,
+# so voicemail(main,N) answers with "No entry in voicemail config file for
+# 'main'" and an unanswered call just hangs up. Generate one mailbox per phone
+# in the "main" context. The password is 1000 + index (100 -> 1000,
+# 101 -> 1001), matching the stock layout.
+#
+# format=gsm: this asterisk build ships only format_gsm.so (no wav/wav49
+# res_format_* module), and an unregistered format makes asterisk log
+# "ignoring unknown format" for the whole line.
+
+{
+	cat <<'EOT'
+; ufi-voice voicemail.
+; GENERATED by /usr/sbin/ufi-voice-asterisk-apply from /etc/config/ufivoice.
+[general]
+format=gsm
+serveremail=asterisk
+attach=yes
+skipms=3000
+maxsilence=10
+silencethreshold=128
+maxlogins=3
+sendvoicemail=yes
+directory=/var/spool/asterisk/vm
+EOT
+
+	vm_n=0
+	gen_vm() {
+		local num pw
+		config_get num "$1" number
+		[ -z "$num" ] && return 0
+		vm_n=$((vm_n + 1))
+		# 100 -> 1000, 101 -> 1001, ...: the stock voicemail layout.
+		pw=$((1000 + vm_n - 1))
+		echo "$num => $pw,Extension $num,"
+	}
+	echo "[main]"
+	config_load ufivoice
+	config_foreach gen_vm phone
+	echo
+} > /etc/asterisk/voicemail.conf
+
+mkdir -p /var/spool/asterisk/vm/main
+chown -R asterisk:asterisk /var/spool/asterisk 2>/dev/null
+
+# A running asterisk keeps the old mailboxes: it reads voicemail.conf only at
+# module load, and neither "core reload" nor "dialplan reload" refreshes them.
+if pidof asterisk >/dev/null 2>&1; then
+	asterisk -rx "voicemail reload" >/dev/null 2>&1
+	asterisk -rx "dialplan reload" >/dev/null 2>&1
+fi
 
 # --- manager.conf --------------------------------------------------------
 
