@@ -275,6 +275,48 @@ exten => *98,1,Answer()
 - `packages/ufi-voice/`（顶层跟踪）与 `openwrt/package/msm8916/ufi-voice/` 是**两份副本**，
   改动必须两边同步，否则只进 git 不进镜像。
 
+## 2026-11-28（四）：中文（zh-CN）语音提示音替换英文，只装用到的
+
+### 需求
+- 拨 `*98` IVR、`*97100` 信箱、以及拨 100/101 转语音留言时，提示音要是**中文**；
+- 网上中文包有 593 条，**只要我们用到的**，多余的不要（减小镜像体积）。
+
+### 中文提示音来源
+GitHub `Mrcoolfuyu/asterisk-freepbx-chinese-pack`（593 条中文 WAV，
+edge-tts 微软中文合成）。官方 downloads.asterisk.org 只有 en/fr/de/es/...，
+**没有 zh-cn**。
+
+### 转换工具（本机无 sox/ffmpeg）
+构建机上没有 sox/ffmpeg/astconvt，asterisk 源码树自带 **libgsm**
+（`codecs/gsm/`）。用 gcc 在 host 上编译 `libgsm.a`（18 个对象），
+再写一个 ~90 行 `wav2gsm.c`（读 8000Hz/16bit/单声道 WAV，每 160 样本
+`gsm_encode` 成 33 字节帧），即可 WAV→GSM。工具在
+`/tmp/opencode/gsmtool/`（wav2gsm 已实测：beep 22 帧=726B 逐帧对齐）。
+
+### 只装用到的 104 个
+中文包 vm-* 共 119 个，但 **app_voicemail.c 只引用其中一部分**。
+取交集（中文包有 ∩ app_voicemail.c 引用）：
+- **102 个 vm-\*.gsm**（语音留言全部流程用到的提示音）
+- **basic-pbx-ivr-main.gsm**（`*98` IVR 主菜单引导，`install_ivr_greeting`
+  把它复制成 `ufi-phones.gsm`）
+- **beep.gsm**（留言录音前的哔声）
+共 **104 个，624KB**。其余 489 条（confbridge/queue/agent/dir/demo 等
+没用到的功能）不装。
+
+### 集成方式：同名覆盖
+`ufi-voice-asterisk` 包的 `install` 新增 `./files/sounds/*.gsm` →
+`/usr/share/asterisk/sounds/`，与 asterisk-app-voicemail 装的英文
+同名文件**覆盖**（英文 vm-intro.gsm=9339B，中文=7194B，中文更小）。
+asterisk 的提示音查找默认在 `/usr/share/asterisk/sounds/` 根目录
+（非语言子目录），所以同名覆盖即生效，无需 `Set(CHANNEL(language))`
+（本 build 甚至没装 `func_channel.so`，`CHANNEL()` 函数不可用）。
+
+### 关键验证点
+- 镜像里 `/usr/share/asterisk/sounds/vm-intro.gsm` 大小应为 **7194B**（非 9339B）；
+- `basic-pbx-ivr-main.gsm` 应为中文版（非 41910B 英文）；
+- `beep.gsm` 726B；
+- 播放时能听到中文（AudioSocket 抓包看能量，或实听）。
+
 ## 2026-11-28（三）：* 键被手机转发成 #，且语音留言 spool 在 tmpfs
 
 ### `*` 键被 Zoiper 发成 `#`（设备实测铁证）
