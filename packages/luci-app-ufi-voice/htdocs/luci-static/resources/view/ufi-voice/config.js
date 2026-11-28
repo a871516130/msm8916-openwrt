@@ -36,9 +36,12 @@ return view.extend({
 	render: function(data) {
 		var st = null;
 
+		// load() 返回 Promise.all([uci.load('ufivoice'), uci.load('network'), fs.exec(...)]),
+		// 所以 fs.exec 的结果在 data[2] —— 不是 data[1](那是 uci.load('network') 的返回值,
+		// 没有 .stdout 字段)。取错索引会让 st 恒为 null、Registered 列恒显 "—"。
 		try {
-			if (data[1] && data[1].stdout)
-				st = JSON.parse(data[1].stdout);
+			if (data[2] && data[2].stdout)
+				st = JSON.parse(data[2].stdout);
 		}
 		catch (e) {
 			st = null;
@@ -222,7 +225,16 @@ return view.extend({
 		o = s.option(form.DummyValue, '_registered', _('Registered'));
 		o.rawhtml = true;
 		o.cfgvalue = function(section_id) {
+			// 本 section 是匿名 GridSection：不同 LuCI 版本里 section_id 可能是
+			// uci 名(p1/p2)也可能是数字索引，两种都试，取不到 number 就显示 "—"。
 			var num = uci.get('ufivoice', section_id, 'number');
+			if (!num) {
+				var secs = uci.sections('ufivoice', 'phone') || [];
+				var idx = parseInt(section_id, 10);
+				if (!isNaN(idx) && secs[idx - 1])
+					num = uci.get('ufivoice', secs[idx - 1], 'number');
+			}
+
 			var list = (st && st.sip) ? st.sip : [];
 
 			for (var i = 0; i < list.length; i++) {
@@ -230,13 +242,29 @@ return view.extend({
 					continue;
 
 				if (list[i].status === 'down')
-					return '<span style="color:#c62828">' + _('no') + '</span>';
+					return E('span', { 'style': 'color:#c62828' }, _('no'));
 
-				return '<span style="color:#2e7d32">' + _('yes') + '</span>' +
-					(list[i].host ? ' <span style="color:#888">' + list[i].host + '</span>' : '');
+				return E('span', { 'style': 'color:#2e7d32' }, [
+					_('yes'),
+					(list[i].host ? ' \u00a0' + list[i].host : '')
+				]);
 			}
 
-			return '<span style="color:#888">\u2014</span>';
+			// 区分两种 "—"：st 为空 = 状态脚本没跑通(fs.exec 失败/超时)，
+			// 与"该账号确实没有注册"不一样，后者不该用同一个破折号糊过去。
+			return E('span', { 'style': 'color:#888' },
+				st ? '\u2014' : _('status unavailable'));
+		};
+		/* This cell is inside a GridSection (a table). A DummyValue in a table
+		 * is rendered by GridSection.renderTextValue(), which calls
+		 * textvalue(). The base textvalue() passes the value through the
+		 * '%h' HTML-escape filter, which turns our DOM node into the string
+		 * "[object HTMLSpanElement]" and, for plain HTML strings, escaped
+		 * source. Override textvalue() to return the node unchanged so the
+		 * span is inserted as a real element and the status colour is shown. */
+		o.textvalue = function(section_id) {
+			var v = this.cfgvalue(section_id);
+			return (v != null) ? v : this.default;
 		};
 
 		/* ---------------------------------------------------------------- */

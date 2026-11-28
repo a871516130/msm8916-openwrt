@@ -152,6 +152,9 @@ msgstr "仅用于带访问控制的服务器。留空则不发送令牌。"
 msgid "Open on tap"
 msgstr "点击时打开"
 
+msgid "status unavailable"
+msgstr "状态不可用"
+
 msgid ""
 "A link to open when the notification is tapped, instead of the ntfy app. "
 "Point it at a URI your softphone registers — for example "

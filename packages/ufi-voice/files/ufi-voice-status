@@ -4,6 +4,14 @@
 # Everything here is read-only. Each probe has its own timeout so a dead
 # modem or a stopped Asterisk cannot hang the page.
 
+# --- diagnostics ---------------------------------------------------------
+# 记录每次调用：确认 LuCI 的 fs.exec 是否真的执行到本脚本、耗时多少。
+# 若页面显示 "—" 但这里没有新增记录，说明 LuCI 根本没调用到；若有记录但
+# 耗时很长，说明探针超时把总耗时顶出 rpcd 超时、页面拿不到 stdout。
+_u0=$(date +%s)
+echo "$(date '+%H:%M:%S') pid=$$ ppid=$PPID start" >> /tmp/ufi-status.log 2>/dev/null
+trap '_u1=$(date +%s); echo "   took $((_u1 - _u0))s" >> /tmp/ufi-status.log 2>/dev/null' EXIT
+
 json_str() {
 	printf '"%s"' "$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
 }
@@ -25,7 +33,7 @@ modem_operator=""
 modem_signal=0
 modem_tech=""
 
-mm=$(timeout 8 mmcli -m any -K 2>/dev/null)
+mm=$(timeout 3 mmcli -m any -K 2>/dev/null)
 if [ -n "$mm" ]; then
 	modem_state=$(printf '%s\n' "$mm" | awk '
 		/^modem[.]generic[.]state / { sub(/^[^:]*:[[:space:]]*/, ""); print; exit }')
@@ -48,7 +56,7 @@ fi
 
 ims=unavailable
 if [ -e /dev/wwan0qmi0 ]; then
-	ims=$(timeout 8 qmicli -d qrtr://0 --imsa-get-ims-registration-status 2>/dev/null |
+	ims=$(timeout 3 qmicli -d qrtr://0 --imsa-get-ims-registration-status 2>/dev/null |
 		awk -F"'" '/Status:/ { print $2; exit }')
 	[ -n "$ims" ] || ims=unknown
 fi
@@ -66,7 +74,7 @@ dmesg 2>/dev/null | grep -q "failed -110" && dsp=hung
 
 calls=0
 if [ "$modem_state" != unknown ]; then
-	calls=$(timeout 8 mmcli -m any --voice-list-calls 2>/dev/null | grep -c '/Call/')
+	calls=$(timeout 3 mmcli -m any --voice-list-calls 2>/dev/null | grep -c '/Call/')
 fi
 
 # --- SIP registrations ---------------------------------------------------
@@ -81,15 +89,14 @@ add_sip() {
 
 sip_entry() {
 	local num="$1" line st host
-	# `pjsip show contacts` 的数据行形如
-	#   100/sip:100@192.168.1.1:5060  100  0x..  Avail  0.001  ...
-	# 即 $1=联系名(<号码>/sip:...), $2=Aor, $3=Hash, $4=Status。
-	# 旧写法用 /^[[:space:]]*Contact:/ 匹配（数据行并不以 "Contact:" 开头）
-	# 且取 $2(Aor) 而非 $1(联系名)，导致 Registered 恒显 "down"、host 恒空。
+	# `pjsip show contacts` 的数据行形如（asterisk 23 带 "Contact:" 前缀）：
+	#   Contact:  100/sip:100@192.168.1.174:55238;rinstance=d339  ab779a67c1  Avail  136.966
+	# 即 $1="Contact:", $2=联系名(<号码>/sip:...), $3=Hash, $4=Status, $5=RTT。
+	# 用 $1 当联系名会拿到 "Contact:" 导致 ^<号码>/ 永不匹配、恒报 down。
 	line=$(printf '%s\n' "$contacts" | awk -v n="$num" '
 		/\/sip:/ && !/</ {
-			if ($1 !~ "^" n "/") next
-			hostpart = $1
+			if ($2 !~ "^" n "/") next
+			hostpart = $2
 			sub(/^[^\/]*\//, "", hostpart)
 			sub(/.*@/, "", hostpart)
 			split(hostpart, h, ":")

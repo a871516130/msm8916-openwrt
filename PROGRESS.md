@@ -1,5 +1,40 @@
 # MF32LT 移植进度记录
 
+## 2026-11-28 会话：SIP 账号 100 注册打通 + Registered 列 3 个 bug
+
+### 结论：WSS 不支持，当前只有 UDP 5060
+- 设备 `pjsip.conf` 仅 `[transport-udp]` → `protocol=udp`, `0.0.0.0:5060`。
+- `res_pjsip_tls.so` **不存在**；asterisk 23.1.0 源码树里 **没有 `res/res_pjsip_tls.c`**（48 个 `res_pjsip_*.c` 无 tls）；`res_pjsip.c` 不处理 `protocol=tls`。
+- pjproject 带 `--with-ssl`，但 asterisk 侧未启用 TLS 传输。
+- **网页软电话（SIP.js/WebRTC，强制 WSS）当前用不了**；原生客户端（Zoiper/Linphone/baresip）用 UDP 即可。
+
+### SIP Digest 算法（asterisk 23 pjsip 实测）
+- `HA2 = MD5("REGISTER:" + 请求行 URI)`，URI = `sip:192.168.1.1:5060`（**请求行**，不是 Aor）。
+- `response = MD5(HA1:nonce:HA2)`，**不带 qop**；带 `qop=auth` 会被 401 拒绝。
+- 用此算法实测：`SIP/2.0 200 OK`，asterisk 记录 `Contact: 100/sip:100@192.168.1.174:55238 ... Avail`。
+- 客户端密码：100 = `e27cf99746069e9505`，101 = `fb34c798365fd1134d`（见 `/etc/asterisk/ufi-voice-phones.txt`）。
+
+### Registered 列恒显 "—" 的三个 bug（全部已修）
+1. **`sip_entry` awk 取错字段**：asterisk 23 的 contact 数据行形如
+   `Contact:  100/sip:100@192.168.1.174:55238;rinstance=d339  ab779a67c1  Avail  136.966`，
+   即 `$1="Contact:"`、`$2=联系名`、`$3=Hash`、`$4=Status`。旧代码用 `$1` 当联系名 → `^100/` 永不匹配 → 恒报 `down`。改为 `$2`。
+2. **前端取错 Promise.all 索引**（主因）：`load()` 是
+   `[uci.load('ufivoice'), uci.load('network'), fs.exec(...)]`，状态在 **`data[2]`**；
+   旧代码读 `data[1].stdout`（`uci.load('network')` 的返回值，无 `.stdout`）→ `st` 恒为 `null` → 两列恒 "—"。
+3. **匿名 GridSection 兜底**：`section_id` 可能不是 uci 名，加按索引兜底取 `number`。
+
+### 诊断手段（可复用）
+- rpcd `file.exec` 的正确 ubus 参数名是 `command`/`params`/`env`（不是 `cmd`/`args`）：
+  `ubus call file exec '{"command":"/usr/sbin/ufi-voice-status","params":[],"env":[]}'`
+  → 返回 `{code, stdout}` 对象，`stdout` 为 JSON 字符串。
+- `ufi-voice-status` 加了 `/tmp/ufi-status.log` 调用日志（含 `ppid`），`ppid=1400`=rpcd 即 LuCI 调用的证据。
+- modem 探针超时 8s→3s（`mmcli`/`qmicli`/`--voice-list-calls`），避免顶出 rpcd 超时。
+- 前端 `Registered` 列区分两种情况：`st` 为空 → "状态不可用"（脚本没跑通），否则 "—"。
+
+### 待办
+- `luci-app-ufi-voice` 重编后重打镜像（`/tmp/opencode/flash-staging-v2/`）。
+- 设备 kernel 仍 `6.12.112`（旧固件），新 system.img 未刷。
+
 ## 2026-11-27 会话：回退 modemmanager 到上游 + 重写 cellular 页
 
 ### 用户决策（最终）：回退上游 + 重写 cellular
