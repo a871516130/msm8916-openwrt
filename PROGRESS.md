@@ -275,6 +275,39 @@ exten => *98,1,Answer()
 - `packages/ufi-voice/`（顶层跟踪）与 `openwrt/package/msm8916/ufi-voice/` 是**两份副本**，
   改动必须两边同步，否则只进 git 不进镜像。
 
+## 2026-11-28（三）：* 键被手机转发成 #，且语音留言 spool 在 tmpfs
+
+### `*` 键被 Zoiper 发成 `#`（设备实测铁证）
+
+用户报 `*98` 仍无声挂断。抓 pjsip 日志，发现 INVITE 是：
+
+```
+INVITE sip:%2397101@192.168.1.1:5060;transport=UDP SIP/2.0
+```
+
+- `%23` = `#`，即电话发的是 **`#97101`**，不是 `*97100`；
+- 全日志里 `%2A`（`*`）出现 **0 次** —— 手机从没发过 `*`；
+- `#97101` 命中 `_[0-9+*#].` 通配 → 走移动外呼（`ufi-voice-dial`）→ 无声挂断。
+
+**结论：不是 asterisk 的错，是电话把 `*` 键映射成 `#`**（Zoiper 常见行为）。
+修复：dialplan 同时接受两种前缀：
+- `#98` 与 `*98` 都 `Goto(ivr-menu,*98,1)`；
+- `_#97[0-9].` 与 `_*97[0-9].` 都进 `voicemail-in`（`VoiceMailMain(${EXTEN:3}@main)`）；
+- ivr-menu 里 `#` 与 `*` 一样重播菜单。
+
+实测：`AMI Originate Local/#98@ufi-phones` → `Playback(ufi-phones)`，未误走外呼。
+
+### 语音留言 spool 在 tmpfs（重启丢留言）
+
+`/var -> tmp`（OpenWrt 惯例），所以 `/var/spool/asterisk/vm` 在 tmpfs，
+留言**重启即丢**。`voicemail.conf` 的 `directory=` 已改为 `/etc/asterisk/vm`
+（overlay 持久），apply 脚本 `mkdir -p /etc/asterisk/vm/main` + chown。
+
+### 排查提示
+- asterisk 的 `pjsip set logger on` 会把 SIP 报文灌进 messages.log（REGISTER/
+  OPTIONS 每 10s 一条），**查呼叫要用 `grep INVITE`**，不要用 `tail`。
+- 判断电话发了什么：`grep -oE "INVITE sip:[^ ]+" messages.log`，`*`=`%2A`、`#`=`%23`。
+
 ## 关键文件
 - `openwrt/target/linux/msm89xx/patches/869-arm64-dts-qcom-add-msm8916-generic-mf32lt.patch`（iris wcn3620）
 - `openwrt/package/msm8916/qcom-firmware/`（mf32 固件，md5 与 ImmortalWrt 一致）
