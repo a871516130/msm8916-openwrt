@@ -221,9 +221,16 @@ EOT
 
 	# *97<mailbox> -> voicemail, *98 -> IVR. Exact / more specific extensions beat
 	# the _[0-9+*#]. catch-all below, so they never leave for the mobile network.
+	#
+	# Many SIP clients map the phone's * key to # (or the user reaches for #
+	# on the keypad), so accept # as well: #97<mailbox> and #98 are handled
+	# identically. Both are exact/pattern matches and still beat the
+	# catch-all.
 	cat <<'EOT'
 exten => *98,1,Goto(ivr-menu,*98,1)
 exten => _*97[0-9].,1,Goto(voicemail-in,${EXTEN},1)
+exten => #98,1,Goto(ivr-menu,*98,1)
+exten => _#97[0-9].,1,Goto(voicemail-in,${EXTEN},1)
 EOT
 
 	cat <<'EOT'
@@ -277,7 +284,13 @@ EOT
 ; Retrieving uses VoiceMailMain - the "vmmain" alias is not registered by
 ; app_voicemail, only "VoiceMail" and "VoiceMailMain" are.
 [voicemail-in]
+; Both the * and # prefix reach a mailbox: the * prefix is the usual one, the
+; # prefix covers clients whose * key is mapped to #. ${EXTEN:3} strips the
+; 3-character prefix (e.g. *97101 / #97101 -> 101).
 exten => _*97[0-9].,1,Answer()
+ same => n,VoiceMailMain(${EXTEN:3}@main)
+ same => n,Hangup()
+exten => _#97[0-9].,1,Answer()
  same => n,VoiceMailMain(${EXTEN:3}@main)
  same => n,Hangup()
 
@@ -299,6 +312,7 @@ exten => *98,1,Answer()
  same => n(top),Playback(ufi-phones)
   same => n,WaitExten(30)
   same => n,GotoIf($["${EXTEN}" = "*"]?top)
+  same => n,GotoIf($["${EXTEN}" = "#"]?top)
   same => n,GotoIf($["${EXTEN}" = "*98"]?end)
   same => n,GotoIf($["${EXTEN}" = "s"]?end)
   same => n,Goto(ufi-phones,${EXTEN},1)
@@ -333,7 +347,7 @@ maxsilence=10
 silencethreshold=128
 maxlogins=3
 sendvoicemail=yes
-directory=/var/spool/asterisk/vm
+directory=/etc/asterisk/vm
 EOT
 
 	vm_n=0
@@ -352,8 +366,10 @@ EOT
 	echo
 } > /etc/asterisk/voicemail.conf
 
-mkdir -p /var/spool/asterisk/vm/main
-chown -R asterisk:asterisk /var/spool/asterisk 2>/dev/null
+# /var/spool/asterisk is on tmpfs (OpenWrt links /var -> /tmp), so messages
+# left in it would be lost on reboot. Keep the mailbox spool on the overlay.
+mkdir -p /etc/asterisk/vm/main
+chown -R asterisk:asterisk /etc/asterisk/vm 2>/dev/null
 
 # A running asterisk keeps the old mailboxes: it reads voicemail.conf only at
 # module load, and neither "core reload" nor "dialplan reload" refreshes them.
