@@ -178,8 +178,102 @@
 - `voicemail()` 参数：`argv0`=mailbox、`argv1`=options → 正确写法 `voicemail(101@main)`。
 - 只注册了 `VoiceMail`（留言）与 `VoiceMailMain`（查收），**无 `vmmain` 别名**。
 - `voicemail reload` 才刷新 mailbox（`core reload` 无效，`load_config()` 仅模块加载时调一次）。
-- `IVRDemo` **必须带参数**（上下文名），播 `demo-congrats`/`demo-instruct`。
+- ~~`IVRDemo` 必须带参数（上下文名），播 `demo-congrats`/`demo-instruct`。~~
+  **已推翻**：asterisk 23 的 `IVRDemo` 是骨架应用，**忽略** filename 参数，硬编码播
+  `demo-congrats`/`demo-instruct`（本构建无此二文件）→ 菜单必静默。见下方 2026-11-28 第二章。
 - 录音 `format` 只能 `gsm`（只编了 `format_gsm.so`）。
+
+## 2026-11-28（二）：*98 IVR 静默的第二个根因 —— IVRDemo 是骨架应用
+
+> 上文第一根因（缺 `asterisk-codec-gsm`）修好后，用户仍报"拨通没声音"。
+> 排查后发现是**完全独立的第二个 bug**，与 codec 无关。
+
+### 根因：`IVRDemo` 在 asterisk 23 已被删成骨架
+
+读 `apps/app_ivrdemo.c` 全文，`skel_exec()` 只做一件事：
+
+```c
+ast_ivr_menu_run(chan, &ivr_demo, tmp);   /* tmp = 传入的 filename */
+```
+
+而菜单 `ivr_demo` 的项是**硬编码**的：
+
+```c
+{ "s", AST_ACTION_BACKGROUND, "demo-congrats" },   /* 问候语 */
+{ "g", AST_ACTION_BACKGROUND, "demo-instruct" },
+{ "1", AST_ACTION_PLAYBACK, "digits/1" },
+{ "2", AST_ACTION_MENU, &ivr_submenu },
+...
+```
+
+结论：
+- 传给 `IVRDemo(ufi-phones)` 的 `ufi-phones` **根本不作问候语用**；
+- 问候语固定是 `demo-congrats` / `demo-instruct`；
+- 设备上 `ls /usr/share/asterisk/sounds/demo-*.gsm | wc -l` = **0**；
+- 所以拨 `*98` **必然全程静默**，无论 codec 是否修好。
+
+设备日志铁证（修 codec 之前）：
+```
+NOTICE app.c: Unable to find file 'demo-congrats'!
+NOTICE app.c: Unable to find file 'demo-instruct'!
+```
+
+### 修复：改用 `Playback` + `WaitExten`
+
+在 `packages/ufi-voice/files/ufi-voice-asterisk-apply` 里重写 `[ivr-menu]`：
+
+```
+exten => *98,1,Answer()
+ same => n(top),Playback(ufi-phones)
+  same => n,WaitExten(30)
+  same => n,GotoIf($["${EXTEN}" = "*"]?top)
+  same => n,GotoIf($["${EXTEN}" = "*98"]?end)
+  same => n,GotoIf($["${EXTEN}" = "s"]?end)
+  same => n,Goto(ufi-phones,${EXTEN},1)
+ same => n(end),Hangup()
+```
+
+按号码路由进 `ufi-phones`：`100`/`101` 转分机（离线则落信箱），其它号码走移动外呼，`*` 重复菜单。
+
+**`WaitExten` 的坑**：呼叫者不输入时它**不改 `EXTEN`**，仍是入口扩展号（`*98` 或 `s`）。
+若不显式把这两个值路由到挂断，呼叫会 `Goto(ufi-phones,*98,1)` **无限循环回菜单**。
+
+### 第二个缺失文件：`ufi-phones` 从未被创建
+
+即使 `IVRDemo` 的参数生效也无处可播——这个录音文件**从来没被创建过**。
+新增 `install_ivr_greeting()`：从 stock 提示音复制出 `ufi-phones.gsm`，
+优先级 `basic-pbx-ivr-main` → `vm-starmain` → `vm-intro`（本机只有 `.gsm`）。
+已存在的文件不覆盖，允许用户替换成自己的录音。
+
+### 决定性验证方法（本构建缺 Record/MixMonitor）
+
+本 asterisk 只装了 9 个 app（无 `Record`、无 `MixMonitor`，实测
+`No application 'MixMonitor'/'Record'`）。无法录音取证。
+
+改用 **`AudioSocket`**（`app_audiosocket.so` 已装，且正是移动外呼的生产通路）：
+起本地 TCP 监听器 `127.0.0.1:9093`，让 `AudioSocket(uuid,127.0.0.1:9093)` 把通道音频
+送过来数字节。**抓到 200,279 字节 ≈ 31 秒有声内容** → 问候语确实在发声、
+`gsm→slin→ulaw` 转码链有效。
+
+### 排查中暴露的其它事实
+- 提示音**不在语言子目录**：`/usr/share/asterisk/sounds/en/` 是**空的**，
+  实际全在 `/usr/share/asterisk/sounds/*.gsm`（358 个）。按 `en/` 查会误判"文件不存在"。
+- `messages.log` 默认只记 `notice,warning,error`。**成功的播放/转码不产生任何日志**，
+  因此"没有日志 ≠ 没有播放"。
+- 开 verbose：改 `logger.conf` 的 `[logfiles]` 行加 `verbose,debug,dtmf`，
+  但 **`logger reload` 不生效**，必须重启 asterisk。
+- asterisk 23 **无** `logger enable <file> <level>`、无 `pjsip set bsd`、无 `core show logging`；
+  只能 `logger add channel`、`core set verbose N`、`pjsip set logger`。
+- `logger.conf` **不能**出现 `(!)`（那是 asterisk.conf 的类别引用），
+  否则报 `No '=' (equal sign) in line 2`。
+- `Set(TIMEOUT(soft)=30)` 非法：`func_timeout.c: Unknown timeout type specified.`
+  （合法类型：all/ring/proceed/warm/progress/alerting/confirm）。
+
+### 构建/部署注意
+- 本机构建目录 `build_dir/.../asterisk-23.1.0/` 里**没有** `main/ivr.c`（asterisk 23 已删），
+  想查 `ast_ivr_menu_run` 源码需另找上游。
+- `packages/ufi-voice/`（顶层跟踪）与 `openwrt/package/msm8916/ufi-voice/` 是**两份副本**，
+  改动必须两边同步，否则只进 git 不进镜像。
 
 ## 关键文件
 - `openwrt/target/linux/msm89xx/patches/869-arm64-dts-qcom-add-msm8916-generic-mf32lt.patch`（iris wcn3620）
