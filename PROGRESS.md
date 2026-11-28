@@ -31,9 +31,22 @@
 - modem 探针超时 8s→3s（`mmcli`/`qmicli`/`--voice-list-calls`），避免顶出 rpcd 超时。
 - 前端 `Registered` 列区分两种情况：`st` 为空 → "状态不可用"（脚本没跑通），否则 "—"。
 
-### 待办
-- `luci-app-ufi-voice` 重编后重打镜像（`/tmp/opencode/flash-staging-v2/`）。
+### 已重建（本次）
+- `ufi-voice-1.0-r26.apk`（awk `$2` + 日志 + 超时 3s）
+- `luci-app-ufi-voice-1.0-r3.apk`（`data[2]` + section_id 兜底）
+- `luci-i18n-ufi-voice-zh-cn-0.apk`（+「状态不可用」，共 62 条中文）
+- 增量 `make` 重打镜像（`IMG_EXIT=0`）：
+  `system.img` 72,216,921 B / `sysupgrade.bin` 79,298,838 B / `boot.img` 7,067,926 B / `gpt_both0.bin` 34,304 B / `firmware.zip` 632,480 B
+- **刷机包**：`/tmp/opencode/mf32lt-flash-final.tar.gz`（171,344,755 B，
+  sha256 `b488bcb7f09f5395668ad38a88bf0f497e7523369d09534e74506cc4d3362392`）
+  staging `/tmp/opencode/flash-staging-v2/`，`flash.sh` 的 4 个 glob 全部命中，`BOARD_TOKEN=mf32lt`。
+- 已提交 `22672cb` 并 push 到 fork `a871516130/msm8916-openwrt` main。
+  （注：push 要用 `fork` 远端（SSH）；`origin` 走 HTTPS 代理需凭据，会失败。）
+
+### 剩余待办
 - 设备 kernel 仍 `6.12.112`（旧固件），新 system.img 未刷。
+- 实际通话验收：验证音频链 `ufi_voiced` → `hfp_ag` → `voicebridge` → 软电话
+  （`voicebridge` 平时 `stopped`，通话时才起）。
 
 ## 2026-11-27 会话：回退 modemmanager 到上游 + 重写 cellular 页
 
