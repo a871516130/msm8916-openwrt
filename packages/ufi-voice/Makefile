@@ -52,6 +52,7 @@ define Package/ufi-voice-asterisk
   TITLE:=Asterisk setup for ufi-voice (SIP phones <-> mobile calls)
   DEPENDS:=+ufi-voice +asterisk +asterisk-pjsip +asterisk-res-rtp-asterisk \
 	+asterisk-bridge-simple +asterisk-codec-ulaw +asterisk-codec-alaw \
+	+asterisk-codec-gsm +asterisk-app-voicemail +asterisk-app-ivrdemo \
 	+asterisk-app-audiosocket +asterisk-res-audiosocket +asterisk-func-shell \
 	+asterisk-res-timing-timerfd
 endef

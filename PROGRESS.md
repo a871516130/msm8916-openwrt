@@ -130,6 +130,57 @@
 - 设备 DHCP 关闭（`dhcp.lan.ignore=1`）；本机 NM unmanaged 仅 `mac:02:00:01:e8:28:dd`。
 - 设备 USB 网卡 MAC 每次插拔会变，不能依赖固定 MAC；gadget VID:PID `0x1d6b:0x0104`。
 
+## 2026-11-28 会话：语音留言 / *98 IVR 提示音静音修复
+
+### 根因：缺 `asterisk-codec-gsm`（提示音转码链断了一环）
+- 设备提示音**只有 `.gsm`**（358 个），`.ulaw`/`.wav` 为 0；feed 的 sounds 安装规则从 `sounds/en/` 只复制 gsm。
+- 软电话（Zoiper/Linphone/baresip）协商 `ulaw`，通道 native format = ulaw。
+- 播放 `.gsm` 到 ulaw 通道需 translator 链 `gsm→slin→ulaw`：
+  - `codec_gsm` 提供 `gsmtolin`（gsm→slin）——**原先未装**
+  - `codec_ulaw` 提供 `lintoulaw`（slin→ulaw）——已装
+- asterisk 23.1.0 源码树**无** `res/res_transcode.c`、`res_format_sel*.c`、`res_nativefile.c`（20+ 已删老转码层），转码唯一途径是 codec 模块注册的 translator。
+- 缺 `codec-gsm` 时 `ast_translator_build_path` 找不到路径 →
+  `Unable to find a codec translation path: (gsm) -> (ulaw)` →
+  `Unable to open vm-intro (format (ulaw)): Function not implemented` → 全程静音后挂断。
+
+### 关键排查坑
+- `codec_gsm` 用 **`ast_register_translator`**（非 `ast_translator_register`）；grep 写错函数名会误判"无人注册 translator"。
+- `main/translate.c` **已静态编进主程序**（导出 `__ast_register_translator`/`ast_translator_build_path` 等 7 个符号）。
+- 设备 `/usr/sbin/asterisk` 是 stripped，`nm -D` 全空属正常，不能据此判断符号不存在。
+- 设备上 `nm -D codec_gsm.so` 报 `ast_format_slin: symbol not found` 是 ldd 脱离主程序的假象，`module load` 实测成功。
+- **translator 的 src/dst 是 `slin` 而非 `ulaw`**，所以必须两跳，只装 codec_ulaw 不够。
+
+### 实测验证（决定性）
+用 AMI `Originate` 到 `Local/s@voicetest`（`Local` 无需对端注册），另一端 `testanswer/s` 接听；测试上下文里 `Set(CODEC=ulaw)` 强制 ulaw 通道，依次播 `vm-intro`、`demo-congrats`、`IVRDemo(ufi-phones)`：
+- `Response: Success`、`DialStatus: ANSWER`
+- **转码错误 0、文件打开错误 0、文件找不到 0**
+- 全部历史 `codec translation path` 错误时间戳（03:35–05:41）均**早于** codec_gsm 加载（06:07）
+
+### AMI 用法坑
+- `Originate` 必须用 **`Exten`**（不是 `Extension`），否则 `Extension does not exist`。
+- 加 `Async: true` + `ActionID` 才能拿到响应。
+- `Channel: Local/s@ctx` 可自建通道，不受端点未注册影响。
+
+### 修复与持久化
+- `.config` 启用 `CONFIG_PACKAGE_asterisk-codec-gsm=y`，编译产出 `asterisk-codec-gsm-23.1.0-r1.apk`（在 `telephony/` 目录，非 `base/`）。
+- **`ufi-voice/Makefile` 的 `ufi-voice-asterisk` DEPENDS 补上** `asterisk-codec-gsm`、`asterisk-app-voicemail`、`asterisk-app-ivrdemo` —— 否则只靠 `.config` 漂移，重打镜像可能不带（commit `9076271`）。
+- 设备上 `apk add --allow-untrusted` 可临时验证，但重刷会丢；必须进镜像。
+- `modules.conf` 仅 `autoload=yes` + 少量 `noload`，`codec_gsm` 为 `AST_MODFLAG_DEFAULT` 会自动加载。
+
+### 固件构建系统的坑：`make target/install` 不刷新 root.orig
+- 镜像 rootfs **不是**来自 `staging_dir/.../root-msm89xx`，而是 `build_dir/.../root.orig-msm89xx`（`TARGET_DIR_ORIG`）。
+- `include/image.mk` 的 `target-dir-%` 规则：`rm -rf` → `$(CP) $(TARGET_DIR_ORIG)` → `apk add $(mkfs_packages_add)`，即**每次从 root.orig 全新复制**再装 `PACKAGES_<profile>`（= DEVICE_PACKAGES）。
+- 症状：改了 `.config` 加包后只跑 `make target/install`，system.img **大小/内容完全不变**（本次 72,216,921 B 与之前逐字节一致），因为 root.orig 是旧的。
+- **正确顺序：先 `make package/install`（刷新 root.orig），再 `make target/install`**。
+- 验证镜像内容：`unsquashfs -d /tmp/x <system.img>` 后 `ls usr/lib/asterisk/modules/`（squashfs 压缩流里 grep 明文无效）。
+
+### voicemail 相关既有结论（前次会话确认）
+- `voicemail()` 参数：`argv0`=mailbox、`argv1`=options → 正确写法 `voicemail(101@main)`。
+- 只注册了 `VoiceMail`（留言）与 `VoiceMailMain`（查收），**无 `vmmain` 别名**。
+- `voicemail reload` 才刷新 mailbox（`core reload` 无效，`load_config()` 仅模块加载时调一次）。
+- `IVRDemo` **必须带参数**（上下文名），播 `demo-congrats`/`demo-instruct`。
+- 录音 `format` 只能 `gsm`（只编了 `format_gsm.so`）。
+
 ## 关键文件
 - `openwrt/target/linux/msm89xx/patches/869-arm64-dts-qcom-add-msm8916-generic-mf32lt.patch`（iris wcn3620）
 - `openwrt/package/msm8916/qcom-firmware/`（mf32 固件，md5 与 ImmortalWrt 一致）
